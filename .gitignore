@@ -1,0 +1,11 @@
+deps
+
+start.ps1
+start.*
+
+emmy/*.lua
+!emmy/gen.lua
+
+.vscode
+*.*-project
+*.*-workspace

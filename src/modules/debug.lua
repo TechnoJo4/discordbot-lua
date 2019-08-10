@@ -1,0 +1,5 @@
+return {
+    name = "Debug",
+    emoji = "🔧",
+    
+}
