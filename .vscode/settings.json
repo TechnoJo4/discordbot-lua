@@ -4,7 +4,9 @@
         "process"
     ],
     "Lua.diagnostics.disable": [
-        "lowercase-global"
+        "lowercase-global",
+        "undefined-env-child",
+        "undefined-global"
     ],
     "Lua.workspace.useGitIgnore": false
 }
