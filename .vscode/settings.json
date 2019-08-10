@@ -1,0 +1,10 @@
+{
+    "Lua.diagnostics.globals": [
+        "p",
+        "process"
+    ],
+    "Lua.diagnostics.disable": [
+        "lowercase-global"
+    ],
+    "Lua.workspace.useGitIgnore": false
+}
