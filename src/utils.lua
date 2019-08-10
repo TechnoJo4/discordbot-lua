@@ -7,6 +7,8 @@ local function printf(s, ...)
     print(format(s, ...))
 end
 
-return {
-    printf = printf
-}
+local function errorf(s, ...)
+    error(format(s, ...))
+end
+
+return printf, errorf
