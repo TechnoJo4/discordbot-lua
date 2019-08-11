@@ -1,6 +1,7 @@
 ---@class embed
 ---@field private __data table
 
+---@return embed
 function builder()
     ---@type embed
     local builder = {__data={}}
@@ -27,6 +28,7 @@ function builder()
             name = name,
             value = value
         })
+        return self
     end
 
     ---@param value string
@@ -37,17 +39,24 @@ function builder()
         end
 
         self.__data.description = value
+        return self
     end
 
     ---@param value number|Color
     ---@return embed
     function builder:setColor(value)
         self.__data.color = value or 0xFFFFFF
+        return self
     end
 
     ---@return table
     function builder:build()
-        return self.__data
+        return {embed=self.__data}
+    end
+
+    function builder:send(c)
+        if c.channel then c = c.channel end
+        return c:send(self:build())
     end
 
     return builder
