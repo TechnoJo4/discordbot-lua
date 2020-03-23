@@ -1,9 +1,9 @@
--- basically a state enum
+-- state "enum"
 local CMD = 0 -- command
 local NRM = 1 -- normal
 local QTE = 2 -- quoted
 local ESC = 3 -- escape
-
+local REM = 4 -- remainder
 
 ---@param str string
 return function(str)
@@ -28,6 +28,8 @@ return function(str)
             defs = cmd.args
             i = 1
             s = NRM
+
+            if defs[i].type == "+" then s = REM end
         elseif s == QTE then
             if islast then
                 return nil, "Unfinished quote."
@@ -89,7 +91,9 @@ return function(str)
     end
 
     for c in str:gmatch(".") do
-        if s == ESC then
+        if s == REM then
+            cur = cur .. c
+        elseif s == ESC then
             if c == "n" then c = "\n" end
             cur = cur .. c
         elseif c == " " then
@@ -110,8 +114,12 @@ return function(str)
         end
     end
 
-    local _, err = stop("", true)
-    if err then return nil, err end
+    if s == REM then
+        args[defs[i].name] = cur
+    else
+        local _, err = stop("", true)
+        if err then return nil, err end
+    end
 
     return {
         command = cmd,

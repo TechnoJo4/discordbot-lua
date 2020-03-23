@@ -1,8 +1,4 @@
 {
-    "Lua.diagnostics.globals": [
-        "p",
-        "process"
-    ],
     "Lua.diagnostics.disable": [
         "lowercase-global",
         "undefined-env-child",

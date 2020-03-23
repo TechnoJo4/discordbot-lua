@@ -109,7 +109,7 @@ local function types(str)
         s = str:find("Permission")
         if s then return "number|Permissions" end
 
-        return str:sub(1, select(1, str:find("Resolvable")))
+        return str:sub(1, select(1, str:find("Resolvable")-2))
     end
 
     local ret = {}
@@ -172,7 +172,7 @@ local function writeMethods(f, methods, cname, static)
 end
 
 for _, class in pairs(docs) do
-    local f = io.open(pathJoin("./emmy/", class.name .. ".lua"), "w")
+    local f = io.open(pathJoin("./emmy/discordia/", class.name .. ".lua"), "w")
     f:write("---@class ", class.name)
 
     -- i'd like to put all parents here but EmmyLua doesn't support that yet
@@ -183,9 +183,9 @@ for _, class in pairs(docs) do
 
 	if next(class.properties) then
         writeProperties(f, class.properties)
-        f:write("\n\n")
 	end
     f:write("local ", class.name, " = {}\n")
+    f:write("\n\n")
 
     if next(class.statics) then
         f:write("-- statics\n")

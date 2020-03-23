@@ -19,17 +19,15 @@ local COLOR = 0x330077
 local ECOLOR = 0xFF0000
 
 -- setup
+local utils = {}
 local parsers = {}
 local modules = {}
 local aliases = {}
 
 ---@type Client
 local client = discordia.Client()
----@type Logger
-local logger = discordia.Logger()
-local function log(...) logger:log(0, ...) end
 
--- base env & module setup
+-- base env, util & module setup
 do
     -- env setup stuff
     function setupenv(tbl, values, aliases)
@@ -48,18 +46,28 @@ do
     end
 
     setupenv(mload, {
-        ["client"] = client,
+        ["COLOR"] = COLOR,
+        ["ECOLOR"] = ECOLOR,
         ["PREFIX"] = PREFIX,
+        ["client"] = client,
         ["require"] = require,
         ["modules"] = modules,
         ["aliases"] = aliases,
         ["discordia"] = discordia,
+        ["version"] = require("../package").version,
     }, {["discordia"] = {"d", "disc", "discord"}})
+
+    local uload = lwrap(mload, "utils")
+    for fname in fs.scandirSync("utils") do
+        local mod = uload(fname)
+        utils[mod.id] = mod
+    end
 
     -- load modules
     local schema = {
         ["name"] = "string",
         ["emoji"] = "string",
+        -- TODO: COMPLETE THIS
     }
 
     for fname in fs.scandirSync("modules") do
@@ -67,8 +75,9 @@ do
         local mod = mload(fname)
 
         for f, t in pairs(schema) do
+            -- TODO: ALONG WITH THIS
             if not type(mod[f]) == t then
-                errorf("Invalid module %q")
+                errorf("Invalid module %q", mod.name)
             end
         end
 
@@ -76,6 +85,7 @@ do
         if mod.commands then
             ---@param c command
             for _,c in pairs(mod.commands) do
+                c.module = mod
                 aliases[c.name] = c
                 for _,a in pairs(c.aliases) do
                     aliases[a] = c
@@ -83,25 +93,19 @@ do
 
                 -- optional and greedy check
                 ---@param a argdef
-                for _,a in pairs(c.args) do
+                for _,a in pairs(c.args or {}) do
                     local t = a.type
 
-                    if a.optional == nil then
-                        if t:sub(#t,#t) == "?" then
-                            t = t:sub(1,#t-1)
-                            a.optional = true
-                        else
-                            a.optional = false
-                        end
-                    end
+                    if t:sub(#t,#t) == "?" then
+                        a.optional = true; a.greedy = false
+                    elseif t ~= "+" and t:sub(#t,#t) == "+" then
+                        a.optional = false; a.greedy = true
+                    elseif t:sub(#t,#t) == "*" then
+                        a.optional = true; a.greedy = true
+                    else a.optional = false; a.greedy = false end
 
-                    if a.greedy == nil then
-                        if t:sub(#t-1,#t) == "[]" then
-                            t = t:sub(1,#t-2)
-                            a.greedy = true
-                        else
-                            a.greedy = false
-                        end
+                    if a.optional or a.greedy then
+                        t = t:sub(1, #t-1)
                     end
 
                     a.type = t
@@ -112,7 +116,7 @@ do
 end
 
 -- parser setup
-do
+local wrapall do
     ---@param env env
     -- ---@vararg function
     function wrapall(env, tbl)
@@ -148,6 +152,7 @@ do
             ["author"] = m.author,
             ["channel"] = m.channel,
             ["message"] = m,
+            ["reply"] = function(v)m:reply(v)end
         }, {
             ["guild"] = {"g", "server"},
             ["author"] = {"u", "user"},
@@ -161,15 +166,23 @@ do
         local res, err = env(parser)(c)
 
         if err then
-            Embed()
+            return Embed()
                 :setDescription(err)
                 :setColor(0xFF0000)
                 :send(m)
-            return
+        end
+
+        for _,u in pairs(res.command.module.requires or {}) do
+            local util = utils[u]
+            env[u] = util
+            for _,v in pairs(util.g or {}) do
+                env[v] = util[v]
+            end
         end
 
         setupenv(env, res.args)
         local wrappedc = env(res.command["function"])
+
         res, err = pcall(wrappedc)
         if not res then
             m:reply("```\n"..err.."\n```")

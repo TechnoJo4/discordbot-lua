@@ -1,9 +1,9 @@
 # discordbot-lua
 Remake of another very old project of mine.
-`lit install` to install dependencies.
-Run `emmy/gen.lua` to generate annotations for EmmyLua (I use vscode & `sumneko.lua`, which supports EmmyLua annotations). 
 
-Uses a `token` env variable, e.g.
+`lit install` to install dependencies, run `emmy/gen.lua` to generate EmmyLua annotations for discordia. 
+
+The `token` env variable is used for authentication, e.g.
 ```powershell
 cd src
 $env:token = "[TOKEN HERE]"

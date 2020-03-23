@@ -10,17 +10,11 @@ local function wrap(base, bpath)
     local env = setmetatable({}, {__index = base})
 
     return setmetatable({}, {
-        __newindex = function(_, k, v)
-            env[k] = v
-        end,
+        __newindex = function(_, k, v) env[k] = v end,
         __index = function(_, k)
-            if k == "_env" then
-                return env
-            elseif k == "_base" then
-                return base
-            else
-                return env[k]
-            end
+            if k == "_env" then return env
+            elseif k == "_base" then return base
+            else return env[k] end
         end,
         __call = function(_, m)
             if type(m) == "string" then

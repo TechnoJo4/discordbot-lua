@@ -26,7 +26,8 @@ function builder()
 
         a("fields", {
             name = name,
-            value = value
+            value = value,
+            inline = inline,
         })
         return self
     end

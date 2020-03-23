@@ -1,6 +1,6 @@
 return {
     name = "technojo4/discordbot",
-    version = "0.1.1",
+    version = "1.0.0",
     dependencies = {
         "luvit/require",
         "luvit/pretty-print",
