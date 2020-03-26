@@ -172,7 +172,9 @@ local function writeMethods(f, methods, cname, static)
 end
 
 for _, class in pairs(docs) do
-    local f = io.open(pathJoin("./emmy/discordia/", class.name .. ".lua"), "w")
+    local name = pathJoin("./emmy/discordia/", class.name .. ".lua")
+    local f = io.open(name, "w")
+    if not f then print("failed to open file:", name)
     f:write("---@class ", class.name)
 
     -- i'd like to put all parents here but EmmyLua doesn't support that yet
