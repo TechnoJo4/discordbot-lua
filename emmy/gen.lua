@@ -173,8 +173,8 @@ end
 
 for _, class in pairs(docs) do
     local name = pathJoin("./emmy/discordia/", class.name .. ".lua")
-    local f = io.open(name, "w")
-    if not f then print("failed to open file:", name)
+    local f,e = io.open(name, "w")
+    if not f then print("failed to open file:", name) end
     f:write("---@class ", class.name)
 
     -- i'd like to put all parents here but EmmyLua doesn't support that yet
