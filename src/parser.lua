@@ -29,7 +29,7 @@ return function(str)
             i = 1
             s = NRM
 
-            if defs[i].type == "+" then s = REM end
+            if defs[i] and defs[i].type == "+" then s = REM end
         elseif s == QTE then
             if islast then
                 return nil, "Unfinished quote."
