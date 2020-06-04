@@ -70,7 +70,7 @@ function mod.parser()
             elem.bad.parent = elem.bad
         end
 
-        pos = G:match(str, pos)
+        local pos = G:match(str)
         if pos < #str then
             perr = "parse error at position " .. tostring(pos)
         end
@@ -95,7 +95,7 @@ function mod.parser()
                 doc.error = err
             end
         end
-        return doc, err
+        return doc, perr or err
     end
 end
 
