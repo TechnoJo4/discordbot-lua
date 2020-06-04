@@ -4,7 +4,7 @@ local mload = lwrap(getfenv(), "modules")
 
 local Embed = require("embed")
 local parser = require("parser")
-local printf, errorf = require("utils")
+local printf, errorf = unpack(require("./utils"))
 
 -- deps
 local fs = require("fs")
@@ -46,6 +46,7 @@ do
     end
 
     setupenv(mload, {
+        ["Embed"] = Embed,
         ["COLOR"] = COLOR,
         ["ECOLOR"] = ECOLOR,
         ["PREFIX"] = PREFIX,
@@ -59,7 +60,8 @@ do
 
     local uload = lwrap(mload, "utils")
     for fname in fs.scandirSync("utils") do
-        local mod = uload(fname)
+        local mod, err = uload(fname)
+        if not mod then errorf("Error loading %q:\n\t%s", fname, err) end
         utils[mod.id] = mod
     end
 
