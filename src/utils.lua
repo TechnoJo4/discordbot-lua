@@ -14,4 +14,4 @@ local function errorf(s, ...)
     error(format(s, ...))
 end
 
-return printf, errorf
+return {printf, errorf}
