@@ -174,6 +174,18 @@ do
                 :send(m)
         end
 
+        if res.command.module.check then
+            local v, err_msg = env(res.command.module.check)()
+            if not v then
+                Embed()
+                    :setColor(0xFF0000)
+                    :setTitle("Error")
+                    :setDescription(err_msg)
+                    :send(m)
+                return
+            end
+        end
+
         for _,u in pairs(res.command.module.requires or {}) do
             local util = utils[u]
             env[u] = util

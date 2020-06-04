@@ -187,6 +187,9 @@ return {
     name = "NSFW",
     emoji = "🔞",
     requires = {"http", "json", "xml"},
+    check = function()
+        return (c.guild and c.nsfw) or not c.guild, "🔞 This command can only be used in NSFW channels and in DMs."
+    end,
     commands = {
         gelbooru("https://rule34.xxx/index.php", "rule34", "r34"),
         gelbooru("https://realbooru.com/index.php", "realbooru", "real"),

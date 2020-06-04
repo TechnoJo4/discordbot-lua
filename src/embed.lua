@@ -45,6 +45,17 @@ function builder()
 
     ---@param value string
     ---@return embed
+    function builder:setTitle(value, ...)
+        if select("#", ...) > 0 then
+            value = string.format(value, ...)
+        end
+
+        self.__data.title = value
+        return self
+    end
+
+    ---@param value string
+    ---@return embed
     function builder:setImage(value, ...)
         if select("#", ...) > 0 then
             value = string.format(value, ...)
