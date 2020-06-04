@@ -2,7 +2,7 @@ local http = require("coro-http")
 local gsub, format, byte, char = string.gsub, string.format, string.byte, string.char
 
 -- mostly stolen from luvit source
-
+do version = "a" end
 ---@class http
 local mod = { id = "http", headers = {
     {"User-Agent", -- Luvit is the only one i haven't found how to not hardcode. Make a PR if you find an easy way.
