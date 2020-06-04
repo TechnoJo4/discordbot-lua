@@ -1,6 +1,5 @@
 local function ctor(f, name, ...)
     return {
-        ["nsfw"] = true,
         ["name"] = name,
         ["aliases"] = {...},
         ["args"] = { { name = "tags", type = "+" } },
@@ -58,7 +57,6 @@ local function gelbooru(base, ...)
                         :send(c)
                     return
                 end
-                p(_, _x)
                 data = d.children[1]
 
                 cc()
@@ -147,7 +145,6 @@ end
 
 local function open(api, media, name, ...)
     return {
-        ["nsfw"] = true,
         ["name"] = name,
         ["args"] = {},
         ["aliases"] = { ... },
@@ -167,7 +164,6 @@ end
 
 local function nlife(api, name, ...)
     return {
-        ["nsfw"] = true,
         ["name"] = name,
         ["args"] = {},
         ["aliases"] = { ... },
