@@ -21,7 +21,7 @@ local function wrap(base, bpath)
                 local mod, err = loadfile(bpath.."/"..m, "t", env)
                 if err then return nil, err end
                 return mod()
-            elseif type(m) == "function" then
+            elseif type(m) == "function" or type(m) == "number" then
                 return setfenv(m, env)
             else
                 error("tried to call env wrapper with invalid argument")

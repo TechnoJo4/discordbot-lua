@@ -15,7 +15,7 @@ local discordia = require('discordia')
 local PREFIX = "~"
 local LPREFIX = #PREFIX
 
-local COLOR = 0x330077
+local COLOR = 0x4321ff
 local ECOLOR = 0xFF0000
 
 -- setup
@@ -46,6 +46,8 @@ do
     end
 
     setupenv(mload, {
+        ["_lwrap"] = lwrap,
+        ["_setupenv"] = setupenv,
         ["Embed"] = Embed,
         ["COLOR"] = COLOR,
         ["ECOLOR"] = ECOLOR,
@@ -78,7 +80,7 @@ do
 
         for f, t in pairs(schema) do
             -- TODO: ALONG WITH THIS
-            if not type(mod[f]) == t then
+            if type(mod[f]) ~= t then
                 errorf("Invalid module %q", mod.name)
             end
         end
@@ -150,11 +152,12 @@ do
         local env = lwrap(mload)
 
         setupenv(env, {
+            ["_env"] = env,
             ["guild"] = m.guild,
             ["author"] = m.author,
             ["channel"] = m.channel,
             ["message"] = m,
-            ["reply"] = function(v)m:reply(v)end
+            ["reply"] = function(v) m:reply(v) end
         }, {
             ["guild"] = {"g", "server"},
             ["author"] = {"u", "user"},

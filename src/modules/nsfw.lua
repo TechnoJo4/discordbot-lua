@@ -7,12 +7,12 @@ local function ctor(f, name, ...)
     }
 end
 
-local cache = {}
+local cache = { n = 0 }
 local function cc()
     -- clear cache if it gets too big
     local i = 0
-    for _,_ in pairs(cache) do i = i + 1 end
-    if i > 128 then cache = {} end
+    for _,_ in pairs(cache) do i = i + 1 end; cache.n = i
+    if i > 128 then cache = { n = 0 } end
 end
 
 local illegal_tags = {}
@@ -25,14 +25,22 @@ local function illegal(tags)
 end
 
 local function post_embed(post, show_base, c)
-    Embed()
-        :setColor(0x00FF00)
-        :setDescription(
-            --  "Rating: `%s`\nScore: %s\nTags: `%s`\n[View Post](%s%s)\n[Goto Source](%s)",
-                "Rating: `%s`\nScore: %s\nTags: `%s`\nView Post: %s%s\nSource: %s",
-                post.rating, post.score, post.tags, show_base, post.id, post.source)
-        :setImage(post.url)
-        :send(c)
+    if show_base then
+        Embed()
+            :setColor(COLOR)
+            :setDescription(
+                --  "Rating: `%s`\nScore: %s\nTags: `%s`\n[View Post](%s%s)\n[Goto Source](%s)",
+                    "Rating: `%s`\nScore: %s\nTags: `%s`\nView Post: %s%s\nSource: %s",
+                    post.rating, post.score, post.tags, show_base, post.id, post.source)
+            :setImage(post.url)
+            :send(c)
+    else
+        Embed()
+            :setColor(COLOR)
+            :setDescription("Rating: `%s`\nScore: %s\nTags: `%s`", post.rating, post.score, post.tags)
+            :setImage(post.url)
+            :send(c)
+    end
 end
 
 local function gelbooru(base, ...)
@@ -143,21 +151,49 @@ local function moebooru(base, ...)
     end, ...)
 end
 
+
+local clocks = {}
+local function __open(api, media)
+    local _, data = GET(api)
+    local x = json.parse(data)[1]
+
+    local url = media .. x["preview"]:gsub("_preview", "")
+
+    Embed()
+        :setColor(COLOR)
+        :setImage(url)
+        :send(c)
+end
+
+local function __from_cache()
+    if cache.n == 0 then return end
+    local a, i = math.random(1, cache.n-1), 1
+
+    for k,v in pairs(cache) do
+        if k ~= "n" then
+            if i >= a and #v > 0 then
+                post_embed(v[math.random(1, #v)], nil, c)
+            return end
+            i = i + 1
+        end
+    end
+end
+
 local function open(api, media, name, ...)
     return {
         ["name"] = name,
         ["args"] = {},
         ["aliases"] = { ... },
         ["function"] = function()
-            local _, data = GET(api)
-            local x = json.parse(data)[1]
+                local _, data = GET(api)
+                local x = json.parse(data)[1]
 
-            local url = media .. x["preview"]:gsub("_preview", "")
+                local url = media .. x["preview"]:gsub("_preview", "")
 
-            Embed()
-                :setColor(0x00FF00)
-                :setImage(url)
-                :send(c)
+                Embed()
+                    :setColor(COLOR)
+                    :setImage(url)
+                    :send(c)
         end
     }
 end
@@ -172,12 +208,13 @@ local function nlife(api, name, ...)
             local url = json.parse(data).url
 
             Embed()
-                :setColor(0x00FF00)
+                :setColor(COLOR)
                 :setImage(url)
                 :send(c)
         end
     }
 end
+
 
 return {
     name = "NSFW",
@@ -202,5 +239,34 @@ return {
         nlife("futanari", "futanari", "hfuta"),
         nlife("trap", "hentai_trap", "htrap"),
         nlife("Random_hentai_gif", "hentai_gif", "hgif"),
+
+        {
+            ["name"] = "auto_test",
+            ["args"] = {}, ["aliases"] = {},
+            ["function"] = function()
+                local cid = c.id
+                if clocks[cid] then
+                    clocks[cid]:stop()
+                    clocks[cid] = nil
+                return end
+
+                local clock = d.Clock()
+                clocks[cid] = clock
+
+                local i = 1
+                local yes = {
+                    { "http://api.oboobs.ru/boobs/0/1/random/", "http://media.oboobs.ru/", __open },
+                    { "http://api.obutts.ru/butts/0/1/random/", "http://media.obutts.ru/", __open },
+                    { __from_cache }
+                }
+
+                clock:on("min", function()
+                    _env(yes[i][#yes[i]])(unpack(yes[i]))
+                    i = ((i >= #yes) and 1 or (i + 1))
+                end)
+
+                clock:start()
+            end
+        }
     }
 }
