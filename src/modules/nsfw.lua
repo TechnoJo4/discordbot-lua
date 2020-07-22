@@ -17,34 +17,37 @@ end
 
 local illegal_tags = {}
 local function illegal(tags)
+    -- TODO: add more?
     return tags:match("()loli")
         or tags:match("()shota")
         or tags:match("()scat")
         or tags:match("()guro")
         or tags:match("()gore")
+        or tags:match("()child")
 end
 
-local function post_embed(post, show_base, c)
-    if show_base then
-        Embed()
-            :setColor(COLOR)
-            :setDescription(
-                --  "Rating: `%s`\nScore: %s\nTags: `%s`\n[View Post](%s%s)\n[Goto Source](%s)",
-                    "Rating: `%s`\nScore: %s\nTags: `%s`\nView Post: %s%s\nSource: %s",
-                    post.rating, post.score, post.tags, show_base, post.id, post.source)
-            :setImage(post.url)
-            :send(c)
-    else
-        Embed()
-            :setColor(COLOR)
-            :setDescription("Rating: `%s`\nScore: %s\nTags: `%s`", post.rating, post.score, post.tags)
-            :setImage(post.url)
-            :send(c)
-    end
+local function f(fstr, n, ...)
+    if #({...}) ~= n then return "" end
+    return string.format(fstr, ...)
 end
 
+local function post_embed(post, post_base, c)
+    Embed()
+        :setColor(COLOR)
+        :setDescription(table.concat({
+                f("Rating: `%s`\n", 1, post.rating),
+                f("Score: %s\n", 1, post.score),
+                f("Tags: `%s`\n", 1, post.tags),
+                f("[View Post](%s%s)", 2, post_base, post.id),
+                f("[Goto Source](%s)", 1, post.source)
+            }))
+        :setImage(post.url)
+        :send(c)
+end
+
+-- i should probably split the similar code from gelbooru/moebooru into its own function
 local function gelbooru(base, ...)
-    local show_base = base.."?page=post&s=view&id="
+    local post_base = base.."?page=post&s=view&id="
     return ctor(function()
         local data
         do
@@ -101,12 +104,12 @@ local function gelbooru(base, ...)
             return
         end
 
-        post_embed(data[math.random(1,amm)], show_base, c)
+        post_embed(data[math.random(1,amm)], post_base, c)
     end, ...)
 end
 
 local function moebooru(base, ...)
-    local show_base = base.."/post/show/"
+    local post_base = base.."/post/show/"
     local base = base.."/post.json"
     return ctor(function()
         local data do
@@ -147,36 +150,8 @@ local function moebooru(base, ...)
             return
         end
 
-        post_embed(data[math.random(1,amm)], show_base, c)
+        post_embed(data[math.random(1,amm)], post_base, c)
     end, ...)
-end
-
-
-local clocks = {}
-local function __open(api, media)
-    local _, data = GET(api)
-    local x = json.parse(data)[1]
-
-    local url = media .. x["preview"]:gsub("_preview", "")
-
-    Embed()
-        :setColor(COLOR)
-        :setImage(url)
-        :send(c)
-end
-
-local function __from_cache()
-    if cache.n == 0 then return end
-    local a, i = math.random(1, cache.n-1), 1
-
-    for k,v in pairs(cache) do
-        if k ~= "n" then
-            if i >= a and #v > 0 then
-                post_embed(v[math.random(1, #v)], nil, c)
-            return end
-            i = i + 1
-        end
-    end
 end
 
 local function open(api, media, name, ...)
@@ -185,15 +160,15 @@ local function open(api, media, name, ...)
         ["args"] = {},
         ["aliases"] = { ... },
         ["function"] = function()
-                local _, data = GET(api)
-                local x = json.parse(data)[1]
+            local _, data = GET(api)
+            local x = json.parse(data)[1]
 
-                local url = media .. x["preview"]:gsub("_preview", "")
+            local url = media .. x["preview"]:gsub("_preview", "")
 
-                Embed()
-                    :setColor(COLOR)
-                    :setImage(url)
-                    :send(c)
+            Embed()
+                :setColor(COLOR)
+                :setImage(url)
+                :send(c)
         end
     }
 end
@@ -239,34 +214,5 @@ return {
         nlife("futanari", "futanari", "hfuta"),
         nlife("trap", "hentai_trap", "htrap"),
         nlife("Random_hentai_gif", "hentai_gif", "hgif"),
-
-        {
-            ["name"] = "auto_test",
-            ["args"] = {}, ["aliases"] = {},
-            ["function"] = function()
-                local cid = c.id
-                if clocks[cid] then
-                    clocks[cid]:stop()
-                    clocks[cid] = nil
-                return end
-
-                local clock = d.Clock()
-                clocks[cid] = clock
-
-                local i = 1
-                local yes = {
-                    { "http://api.oboobs.ru/boobs/0/1/random/", "http://media.oboobs.ru/", __open },
-                    { "http://api.obutts.ru/butts/0/1/random/", "http://media.obutts.ru/", __open },
-                    { __from_cache }
-                }
-
-                clock:on("min", function()
-                    _env(yes[i][#yes[i]])(unpack(yes[i]))
-                    i = ((i >= #yes) and 1 or (i + 1))
-                end)
-
-                clock:start()
-            end
-        }
     }
 }
