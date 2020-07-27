@@ -27,6 +27,7 @@ local aliases = {}
 ---@type Client
 local client = discordia.Client()
 
+
 -- base env, util & module setup
 do
     -- env setup stuff
@@ -85,35 +86,54 @@ do
             end
         end
 
+        local function _cmd(c, m, g, at)
+            c.module = m
+            c.parent = g
+            at[c.name] = c
+            for _,a in pairs(c.aliases) do at[a] = c end
+
+            -- optional and greedy check
+            ---@param a argdef
+            for _,a in pairs(c.args or {}) do
+                local t = a.type
+
+                if t:sub(#t,#t) == "?" then
+                    a.optional = true; a.greedy = false
+                elseif t ~= "+" and t:sub(#t,#t) == "+" then
+                    a.optional = false; a.greedy = true
+                elseif t:sub(#t,#t) == "*" then
+                    a.optional = true; a.greedy = true
+                else a.optional = false; a.greedy = false end
+
+                if a.optional or a.greedy then
+                    t = t:sub(1, #t-1)
+                end
+
+                a.type = t
+            end
+        end
+
+        local function _grp(g, m, p, at, name)
+            local _at = {}
+            for k,v in pairs(g) do
+                (type(k) == "string" and _grp or _cmd)(v, m, g, _at, k)
+            end
+            _at.group = true
+            (at or aliases)[name] = _at
+            g.name = name
+            g.module = m
+            g.parent = p
+        end
+
         modules[mod.name] = mod
         if mod.commands then
             ---@param c command
-            for _,c in pairs(mod.commands) do
-                c.module = mod
-                aliases[c.name] = c
-                for _,a in pairs(c.aliases) do
-                    aliases[a] = c
-                end
+            for _,c in pairs(mod.commands) do _cmd(c, mod, nil, aliases) end
+        end
 
-                -- optional and greedy check
-                ---@param a argdef
-                for _,a in pairs(c.args or {}) do
-                    local t = a.type
-
-                    if t:sub(#t,#t) == "?" then
-                        a.optional = true; a.greedy = false
-                    elseif t ~= "+" and t:sub(#t,#t) == "+" then
-                        a.optional = false; a.greedy = true
-                    elseif t:sub(#t,#t) == "*" then
-                        a.optional = true; a.greedy = true
-                    else a.optional = false; a.greedy = false end
-
-                    if a.optional or a.greedy then
-                        t = t:sub(1, #t-1)
-                    end
-
-                    a.type = t
-                end
+        if mod.groups then
+            for k,g in pairs(mod.groups) do
+                _grp(g, mod, nil, nil, k)
             end
         end
     end
@@ -144,9 +164,8 @@ do
     ---@param m Message
     client:on("messageCreate", function(m)
         local c = m.content
-        if c:sub(1, LPREFIX) ~= PREFIX then
-            return
-        end
+        if c:sub(1, LPREFIX) ~= PREFIX then return end
+        if c:sub(1, 2) == "~~" then return end
         c = c:sub(1 + LPREFIX)
 
         local env = lwrap(mload)

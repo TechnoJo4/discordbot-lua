@@ -22,14 +22,16 @@ return function(str)
 
     local function stop(c, islast)
         if s == CMD then
-            cmd = aliases[cur]
+            cmd = (cmd or aliases)[cur] -- cmd is non-nil if in group
             if not cmd then return nil, "Invalid command." end
             cur = ""
-            defs = cmd.args
-            i = 1
-            s = NRM
+            if not cmd.group then
+                defs = cmd.args
+                i = 1
+                s = NRM
 
-            if defs[i] and defs[i].type == "+" then s = REM end
+                if defs[i] and defs[i].type == "+" then s = REM end
+            end
         elseif s == QTE then
             if islast then
                 return nil, "Unfinished quote."
