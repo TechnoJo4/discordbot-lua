@@ -1,5 +1,7 @@
 deps
 
+db
+
 *.log
 gateway.json
 
