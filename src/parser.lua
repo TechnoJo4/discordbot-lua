@@ -86,7 +86,7 @@ return function(str)
                     lastreq = di
                 end
             end
-            if i < lastreq then
+            if i < lastreq or #cur == 0 and i == lastreq then
                 return nil, "Not enough arguments."
             end
         end
