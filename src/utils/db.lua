@@ -5,6 +5,7 @@
 local mod = { id = "db", g = {} }
 local serialize, deserialize
 
+local fs = require("fs")
 local ffi = require("ffi")
 local bor, band = bit.bor, bit.band
 local shl, shr = bit.lshift, bit.rshift
@@ -23,8 +24,7 @@ local writers = {
         return char(1, b1, b2)..val
     end,
     ["number"] = function(val) -- 2
-        local ptr = ffi.new("double[1]")
-        ptr[0] = val
+        local ptr = ffi.new("double[1]", { val })
         return char(2)..ffi.string(ptr, 8)
     end,
     ["table"] = function(val) -- 3
@@ -33,6 +33,9 @@ local writers = {
         local b1, b2 = shr(len, 8), band(len, 0xFF)
         return char(3, b1, b2)..ser
     end,
+    ["boolean"] = function(val) -- 4 -> true, 5 -> false
+        return val and char(4) or char(5)
+    end
 }
 
 local parsers = {
@@ -48,10 +51,13 @@ local parsers = {
     end,
     [3] = function(b, i) -- table
         local b1, b2 = b:byte(i, i+1)
+        if not b2 then p(b, i) end
         local len = bor(shl(b1, 8), b2)
         if len == 0 then return {}, i+2 end
         return deserialize(b:sub(i+2,i+1+len)), i+2+len
     end,
+    [4] = function(_, i) return true, i+1 end, -- true
+    [5] = function(_, i) return false, i+1 end -- false
 }
 
 function serialize(val, ret_tbl)
@@ -86,17 +92,11 @@ function deserialize(str)
 end
 
 function mod.fromfile(name)
-    local f = io.open(name, "r")
-    local c = f:read("*a")
-    f:close()
-    return deserialize(c)
+    return deserialize(fs.readFileSync(name))
 end
 
 function mod.tofile(name, value)
-    local f = io.open(name, "w")
-    local v = serialize(value, true)
-    for _,v in ipairs(v) do f:write(v) end
-    f:close()
+    fs.writeFileSync(name, table.concat(serialize(value, true), ""))
 end
 
 mod.serialize = serialize
