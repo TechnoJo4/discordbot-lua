@@ -43,7 +43,7 @@ return {
         ["aliases"] = {}, ["args"] = { { name = "nick", type = "+" } },
         ["function"] = function()
             for v in guild.members:iter() do
-                if #nick == 0 then
+                if #nick == 0 or nick == "remove" then
                     v:setNickname(nil)
                 else
                     if v.nickname ~= nick then
