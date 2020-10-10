@@ -1,14 +1,14 @@
 local http = require("coro-http")
 local gsub, format, byte, char = string.gsub, string.format, string.byte, string.char
 
--- mostly stolen from luvit source
-do version = "a" end
 ---@class http
 local mod = { id = "http", headers = {
     {"User-Agent", -- Luvit is the only one i haven't found how to not hardcode. Make a PR if you find an easy way.
             "discordbot-lua/"..version.." (+https://github.com/TechnoJo4/discordbot-lua) "..
             "coro-http/3.1.0 (Luvit/2.16.0; "..jit.version:gsub(" ", "/").."; ".._VERSION:gsub(" ", "/")..")"}
 }, g = {"GET", "POST"} }
+
+-- mostly stolen from luvit source
 
 ---@return string
 ---@param str string
@@ -55,7 +55,7 @@ end
 ---@param headers table<string, string> | nil
 function mod.GET(url, qstr, headers)
     if qstr then
-        url = (type(qstr) == "table") and mod.qstr() or (url.."?"..tostring(qstr))
+        url = (type(qstr) == "table") and mod.qstr(qstr, url) or (url.."?"..tostring(qstr))
     end
     return http.request("GET", url, headers or mod.headers)
 end
