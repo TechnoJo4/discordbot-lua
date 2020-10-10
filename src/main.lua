@@ -59,7 +59,7 @@ do
         ["aliases"] = aliases,
         ["discordia"] = discordia,
         ["version"] = require("../package").version,
-    }, {["discordia"] = {"d", "disc", "discord"}})
+    }, { ["discordia"] = {"disc", "discord"} })
 
     local uload = lwrap(mload, "utils")
     for fname in fs.scandirSync("utils") do
@@ -116,7 +116,13 @@ do
         local function _grp(g, m, p, at, name)
             local _at = {}
             for k,v in pairs(g) do
-                (type(k) == "string" and _grp or _cmd)(v, m, g, _at, k)
+                if k == "aliases" then
+                    for _,alias in pairs(v) do
+                        (at or aliases)[alias] = _at
+                    end
+                else
+                    (type(k) == "string" and _grp or _cmd)(v, m, g, _at, k)
+                end
             end
             _at.group = true
             (at or aliases)[name] = _at
@@ -135,6 +141,20 @@ do
             for k,g in pairs(mod.groups) do
                 _grp(g, mod, nil, nil, k)
             end
+        end
+
+        if mod.setup or mod.teardown then
+            local senv = lwrap(mload)
+            for _,u in pairs(mod.requires or {}) do
+                local util = utils[u]
+                senv[u] = util
+                for _,v in pairs(util.g or {}) do
+                    senv[v] = util[v]
+                end
+            end
+
+            if mod.setup then senv(mod.setup)() end
+            if mod.teardown then mod.teardown = senv(mod.teardown) end
         end
     end
 end
@@ -225,5 +245,5 @@ do
         end
     end)
 
-    coroutine.wrap(client.run)(client, "Bot "..os.getenv("token"))
+    client:run("Bot "..os.getenv("token"))
 end

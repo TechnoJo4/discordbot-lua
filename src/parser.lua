@@ -81,6 +81,9 @@ return function(str)
 
         if islast then
             local lastreq = 0
+            if not defs then
+                return nil, "Invalid command."
+            end
             for di,def in pairs(defs) do
                 if not def.optional then
                     lastreq = di
