@@ -82,6 +82,7 @@ local function backup()
     local dt = os.date("!%m.%d.%H")
     write_json("../vote/votes.backup."..dt..".json", data_vote)
     write_json("../vote/voters.backup."..dt..".json", data_voters)
+    write_json("../vote/suggestions.backup."..dt..".json", data_suggestions)
 end
 clock:on("hour", backup)
 clock:start(true)
