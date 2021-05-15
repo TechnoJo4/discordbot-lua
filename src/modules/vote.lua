@@ -3,7 +3,7 @@
 local GUILD = "332665699455729665" -- tachiyomi "349436576037732353"
 local ROLE = "800068353820852265" -- tachiyomi "842766939675033600"
 
-local SUGGESTION_START = "https://anilist.co/manga/"
+local SUGGESTION_PATTERN = "^https://anilist.co/manga/%d+/.-/"
 
 -- END CONFIG
 
@@ -136,7 +136,7 @@ return {
         ["function"] = function()
             local old = data_suggestions[u.id]
 
-            if #link < #SUGGESTION_START or link:sub(1, #SUGGESTION_START) ~= SUGGESTION_START then
+            if not link:match(SUGGESTION_PATTERN) then
                 Embed()
                     :setColor(0xFF0000)
                     :setTitle("Error")
