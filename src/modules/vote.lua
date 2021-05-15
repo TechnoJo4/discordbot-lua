@@ -158,6 +158,19 @@ return {
                 return
             end
 
+            local dedup = {}
+            for _,v in ipairs(choices) do
+                if dedup[v] then
+                    Embed()
+                        :setColor(0xFF0000)
+                        :setTitle("Error")
+                        :setDescription("Duplicate choice `%d`.", v)
+                        :send(m)
+                    return
+                end
+                dedup[v] = true
+            end
+
             for _,num in ipairs(choices) do
                 if not data_choices.names[num] then
                     Embed()
