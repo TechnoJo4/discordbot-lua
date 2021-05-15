@@ -16,12 +16,12 @@ you can then read and process the results saved in votes.json
 
 INITIALIZATION:
     1. create a "vote" folder alongside "src"
-    2. create "votes.json", "voters.json" and "choices.json" inside
+    2. create "votes.json", "voters.json", "suggestions.json" and "choices.json" inside
     3. follow reset instructions below
 
 HOW TO RESET:
-    resetting votes.json and voters.json is just a matter of replacing
-    the contents of the file with "{}" (an empty json object)
+    resetting votes.json, voters.json, suggestions.json is just a matter
+    of replacing the contents of the file with "{}" (an empty json object)
 
 
     choices.json has to be manually filled with contents in the format:
