@@ -79,82 +79,84 @@ do
         ---@type module
         local mod = mload(fname)
 
-        for f, t in pairs(schema) do
-            -- TODO: ALONG WITH THIS
-            if type(mod[f]) ~= t then
-                errorf("Invalid module %q", mod.name)
-            end
-        end
-
-        local function _cmd(c, m, g, at)
-            c.module = m
-            c.parent = g
-            at[c.name] = c
-            for _,a in pairs(c.aliases) do at[a] = c end
-
-            -- optional and greedy check
-            ---@param a argdef
-            for _,a in pairs(c.args or {}) do
-                local t = a.type
-
-                if t:sub(#t,#t) == "?" then
-                    a.optional = true; a.greedy = false
-                elseif t ~= "+" and t:sub(#t,#t) == "+" then
-                    a.optional = false; a.greedy = true
-                elseif t:sub(#t,#t) == "*" then
-                    a.optional = true; a.greedy = true
-                else a.optional = false; a.greedy = false end
-
-                if a.optional or a.greedy then
-                    t = t:sub(1, #t-1)
+        if mod ~= false then
+            for f, t in pairs(schema) do
+                -- TODO: ALONG WITH THIS
+                if type(mod[f]) ~= t then
+                    errorf("Invalid module %q", mod.name)
                 end
-
-                a.type = t
             end
-        end
 
-        local function _grp(g, m, p, at, name)
-            local _at = {}
-            for k,v in pairs(g) do
-                if k == "aliases" then
-                    for _,alias in pairs(v) do
-                        (at or aliases)[alias] = _at
+            local function _cmd(c, m, g, at)
+                c.module = m
+                c.parent = g
+                at[c.name] = c
+                for _,a in pairs(c.aliases) do at[a] = c end
+
+                -- optional and greedy check
+                ---@param a argdef
+                for _,a in pairs(c.args or {}) do
+                    local t = a.type
+
+                    if t:sub(#t,#t) == "?" then
+                        a.optional = true; a.greedy = false
+                    elseif t ~= "+" and t:sub(#t,#t) == "+" then
+                        a.optional = false; a.greedy = true
+                    elseif t:sub(#t,#t) == "*" then
+                        a.optional = true; a.greedy = true
+                    else a.optional = false; a.greedy = false end
+
+                    if a.optional or a.greedy then
+                        t = t:sub(1, #t-1)
                     end
-                else
-                    (type(k) == "string" and _grp or _cmd)(v, m, g, _at, k)
-                end
-            end
-            _at.group = true
-            (at or aliases)[name] = _at
-            g.name = name
-            g.module = m
-            g.parent = p
-        end
 
-        modules[mod.name] = mod
-        if mod.commands then
-            ---@param c command
-            for _,c in pairs(mod.commands) do _cmd(c, mod, nil, aliases) end
-        end
-
-        if mod.groups then
-            for k,g in pairs(mod.groups) do
-                _grp(g, mod, nil, nil, k)
-            end
-        end
-
-        if mod.setup or mod.teardown then
-            local senv = lwrap(mload)
-            for _,u in pairs(mod.requires or {}) do
-                local util = utils[u]
-                senv[u] = util
-                for _,v in pairs(util.g or {}) do
-                    senv[v] = util[v]
+                    a.type = t
                 end
             end
 
-            if mod.setup then senv(mod.setup)() end
-            if mod.teardown then mod.teardown = senv(mod.teardown) end
+            local function _grp(g, m, p, at, name)
+                local _at = {}
+                for k,v in pairs(g) do
+                    if k == "aliases" then
+                        for _,alias in pairs(v) do
+                            (at or aliases)[alias] = _at
+                        end
+                    else
+                        (type(k) == "string" and _grp or _cmd)(v, m, g, _at, k)
+                    end
+                end
+                _at.group = true
+                (at or aliases)[name] = _at
+                g.name = name
+                g.module = m
+                g.parent = p
+            end
+
+            modules[mod.name] = mod
+            if mod.commands then
+                ---@param c command
+                for _,c in pairs(mod.commands) do _cmd(c, mod, nil, aliases) end
+            end
+
+            if mod.groups then
+                for k,g in pairs(mod.groups) do
+                    _grp(g, mod, nil, nil, k)
+                end
+            end
+
+            if mod.setup or mod.teardown then
+                local senv = lwrap(mload)
+                for _,u in pairs(mod.requires or {}) do
+                    local util = utils[u]
+                    senv[u] = util
+                    for _,v in pairs(util.g or {}) do
+                        senv[v] = util[v]
+                    end
+                end
+
+                if mod.setup then senv(mod.setup)() end
+                if mod.teardown then mod.teardown = senv(mod.teardown) end
+            end
         end
     end
 end
@@ -214,6 +216,18 @@ do
                 :setDescription(err)
                 :setColor(0xFF0000)
                 :send(m)
+        end
+
+        if res.command.check then
+            local v, err_msg = env(res.command.check)()
+            if not v then
+                Embed()
+                    :setColor(0xFF0000)
+                    :setTitle("Error")
+                    :setDescription(err_msg)
+                    :send(m)
+                return
+            end
         end
 
         if res.command.module.check then

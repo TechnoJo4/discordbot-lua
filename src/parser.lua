@@ -42,7 +42,6 @@ return function(str)
                 ---@type argdef
                 local def = defs[i]
                 if not def then
-                    p(i, defs[i])
                     return def, nil, "Too many arguments."
                 end
                 if def.greedy and money == 0 then
@@ -89,7 +88,7 @@ return function(str)
                     lastreq = di
                 end
             end
-            if i < lastreq or #cur == 0 and i == lastreq then
+            if i < lastreq or (#cur == 0 and i == lastreq and not (defs[lastreq].greedy and money > 0)) then
                 return nil, "Not enough arguments."
             end
         end

@@ -1,6 +1,8 @@
 return function(str)
     local user
 
+    if str == "me" then return author end
+
     if str:sub(1,2) == "<@" and str:sub(#str,#str) == ">" then
         str = str:sub(str:sub(3,3) == "!" and 4 or 3, #str-1)
     end

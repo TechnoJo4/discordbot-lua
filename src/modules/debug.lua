@@ -1,3 +1,5 @@
+do return false end
+
 local function swap(a, i, j)
     a[i], a[j] = a[j], a[i]
 end
