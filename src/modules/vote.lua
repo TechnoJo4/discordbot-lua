@@ -3,8 +3,7 @@
 local GUILD = "332665699455729665" -- tachiyomi "349436576037732353"
 local ROLE = "800068353820852265" -- tachiyomi "842766939675033600"
 
-local MIN_VOTE_CHOICES = 2
-local MAX_VOTE_CHOICES = 5
+local SUGGESTION_START = "https://anilist.co/manga/"
 
 -- END CONFIG
 
@@ -46,6 +45,7 @@ HOW TO RESET:
 local data_vote
 local data_voters
 local data_choices
+local data_suggestions
 
 local l_guild
 local function CHECK()
@@ -98,10 +98,12 @@ return {
         data_vote = read_json("../vote/votes.json")
         data_voters = read_json("../vote/voters.json")
         data_choices = read_json("../vote/choices.json")
+        data_suggestions = read_json("../vote/suggestions.json")
     end,
     teardown = function()
         write_json("../vote/votes.json", data_vote)
         write_json("../vote/voters.json", data_voters)
+        write_json("../vote/suggestions.json", data_suggestions)
     end,
     commands = { {
         ["name"] = "choices",
@@ -125,6 +127,31 @@ return {
             reply(choices_text)
         end
     }, {
+        ["name"] = "suggest",
+        ["check"] = CHECK,
+        ["aliases"] = {}, ["args"] = {
+            { name = "link", type = "+" }
+        },
+        ["function"] = function()
+            local old = data_suggestions[u.id]
+
+            if #link < #SUGGESTION_START or link:sub(1, #SUGGESTION_START) ~= SUGGESTION_START then
+                Embed()
+                    :setColor(0xFF0000)
+                    :setTitle("Error")
+                    :setDescription("You suggestion must be a valid AniList link.")
+                    :send(m)
+                return
+            end
+
+            data_suggestions[u.id] = link
+            if old then
+                reply("Modified your suggestion from <%s> to <%s>.", old, link)
+            else
+                reply("Added suggestion <%s>.", link)
+            end
+        end
+    }, {
         ["name"] = "vote",
         ["check"] = CHECK,
         ["aliases"] = {}, ["args"] = {
@@ -140,20 +167,11 @@ return {
                 return
             end
 
-            if #choices < MIN_VOTE_CHOICES then
+            if #choices < 1 then
                 Embed()
                     :setColor(0xFF0000)
                     :setTitle("Error")
-                    :setDescription("Not enough choices. You must vote for at least `%d` entries.", MIN_VOTE_CHOICES)
-                    :send(m)
-                return
-            end
-
-            if #choices > MAX_VOTE_CHOICES then
-                Embed()
-                    :setColor(0xFF0000)
-                    :setTitle("Error")
-                    :setDescription("Too many choices. You can only vote for at most `%d` entries.", MAX_VOTE_CHOICES)
+                    :setDescription("You must vote for at least one entries.")
                     :send(m)
                 return
             end
@@ -185,7 +203,7 @@ return {
             data_voters[user.id] = true
 
             for n,choice in ipairs(choices) do
-                data_vote[choice] = (data_vote[choice] or 0) + (MAX_VOTE_CHOICES - (n-1))
+                data_vote[choice] = (data_vote[choice] or 0) + (1 / n)
             end
 
             reply("Successfully voted.")

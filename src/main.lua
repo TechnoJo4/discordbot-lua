@@ -198,7 +198,13 @@ do
             ["author"] = m.author,
             ["channel"] = m.channel,
             ["message"] = m,
-            ["reply"] = function(v) m:reply(v) end
+            ["reply"] = function(v, ...)
+                if select('#', ...) > 0 then
+                    m:reply(string.format(v, ...))
+                else
+                    m:reply(v)
+                end
+            end
         }, {
             ["guild"] = {"g", "server"},
             ["author"] = {"u", "user"},
