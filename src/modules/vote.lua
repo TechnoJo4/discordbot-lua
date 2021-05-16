@@ -26,19 +26,18 @@ COMMANDS:
     `choices` - Show voting entries
     `vote <entry ids...>` - Vote for an entry
 
-    __admin__
-    `save` - Save data
-    `reload` - Reload data
-    `open` - Open voting
-    `close` - Close voting
-    `s_open` - Open suggestions
-    `s_close` - Close suggestions
-    `votes` - Show entry vote points
-    `suggestions` - Show all user suggestions
-    `remove_suggestion <user id>` - Remove a user's suggestion
-    `suggestions2choices` - Create vote entries from user suggestions
-    `set_name <entry id> <name>` - Set an entry's name
-    `set_link <entry id> <link>` - Set an entry's link
+    `admin open` - Open voting
+    `admin close` - Close voting
+    `admin s_open` - Open suggestions
+    `admin s_close` - Close suggestions
+    `admin save` - Save json data
+    `admin reload` - Reload json data
+    `admin votes` - Show vote points for entries
+    `admin suggestions` - Show all user suggestions
+    `admin remove_suggestion <user id>` - Remove a user's suggestion
+    `admin suggestions2choices` - Create vote entries from user suggestions
+    `admin set_name <entry id> <name>` - Set an entry's name
+    `admin set_link <entry id> <link>` - Set an entry's link
 
 
 INITIALIZATION:
