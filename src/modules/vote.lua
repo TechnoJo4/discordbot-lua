@@ -6,6 +6,12 @@ local ADMIN_ROLE = "800068353820852265" -- tachiyomi "842824047855403008"
 
 local SUGGESTION_PATTERN = "^https://anilist.co/manga/%d+/.-/"
 
+local AUTOMATE = true
+local INFO_CHANNEL = "456261147864203276" -- tachiyomi "842823870288363560"
+local AUTO_PING = "<@&800068353820852265>" -- tachiyomi "<@&842766939675033600>"
+
+math.randomseed(os.time())
+
 -- END CONFIG
 
 --[[ DOCUMENTATION
@@ -14,6 +20,26 @@ im too lazy to make a way to close the vote or whatever so just
 shutdown the bot (use ~shutdown to make sure teardown happens
 and results are saved) when you want to close voting for the week.
 you can then read and process the results saved in votes.json
+
+COMMANDS:
+    `suggest <anilist link>` - Suggest a book choice
+    `choices` - Show voting entries
+    `vote <entry ids...>` - Vote for an entry
+
+    __admin__
+    `save` - Save data
+    `reload` - Reload data
+    `open` - Open voting
+    `close` - Close voting
+    `s_open` - Open suggestions
+    `s_close` - Close suggestions
+    `votes` - Show entry vote points
+    `suggestions` - Show all user suggestions
+    `remove_suggestion <user id>` - Remove a user's suggestion
+    `suggestions2choices` - Create vote entries from user suggestions
+    `set_name <entry id> <name>` - Set an entry's name
+    `set_link <entry id> <link>` - Set an entry's link
+
 
 INITIALIZATION:
     1. create a "vote" folder alongside "src"
@@ -71,6 +97,7 @@ local data_choices
 local data_suggestions
 
 local l_guild
+local info_channel
 local function CHECK()
     if guild then
         return false, "This command can only be used in DMs."
@@ -112,15 +139,65 @@ end
 
 local choices_text
 
+local genres = { "Action", "Adventure", "Ecchi", "Gender Bender", "Horror", "Mystery", "Romance", "Sci-fi", "Supernatural", "Yaoi/Shounen Ai", "Yuri/Shoujo Ai", "Comedy", "Drama", "Fantasy", "Harem", "Historical", "Martial Arts", "Psychological", "School Life", "Slice of Life", "Sports", "Tragedy" }
+
 -- create hourly backups (use in case of rigged voting or bad teardown)
 local clock = discordia.Clock()
-local function backup()
+local function automation()
+    if AUTOMATE then
+        local dt = os.date("!*t")
+
+        info_channel = info_channel or client:getChannel(INFO_CHANNEL)
+
+        -- automate suggestions open/close, alongside with genre randomization
+        local suggestions_open = (dt.wday == 6 and dt.hour >= 4 and dt.hour < 16)
+        if data_suggestions.running ~= suggestions_open then
+            if suggestions_open then
+                Embed()
+                    :setColor(COLOR)
+                    :setTitle("Genre of the Week")
+                    :setDescription("The chosen genre was: **%s**.\nSuggestions are now open.", genres[math.random(1, #genres)])
+                    :send(info_channel, AUTO_PING)
+            else
+                Embed()
+                    :setColor(ECOLOR)
+                    :setDescription("Suggestions are now closed.")
+                    :send(info_channel)
+            end
+
+            -- actually close suggestions
+            data_suggestions.running = suggestions_open
+        end
+
+        -- automate vote open/close
+        local vote_open = (dt.wday == 6 and dt.hour >= 18) or (dt.wday == 7 and dt.hour < 18)
+        if data_choices.running ~= vote_open then
+            if vote_open then
+                Embed()
+                    :setColor(COLOR)
+                    :setTitle("Vote of the Week")
+                    :setDescription("Voting is now open.")
+                    :send(info_channel, AUTO_PING)
+            else
+                Embed()
+                    :setColor(ECOLOR)
+                    :setDescription("Voting is now closed. The winning entry will be announced shortly.")
+                    :send(info_channel)
+
+                -- TODO: choose winner?
+            end
+
+            -- actually close voting
+            data_choices.running = vote_open
+        end
+    end
+
     local dt = os.date("%m-%d.%H")
     write_json("../vote/backup/votes."..dt..".json", data_vote)
     write_json("../vote/backup/voters."..dt..".json", data_voters)
     write_json("../vote/backup/suggestions."..dt..".json", data_suggestions)
 end
-clock:on("hour", backup)
+clock:on("hour", automation)
 clock:start(true)
 
 return {
@@ -129,7 +206,7 @@ return {
     requires = { "json" },
     setup = function()
         local env = getfenv()
-        setfenv(backup, env)
+        setfenv(automation, env)
         setfenv(read_json, env)
         setfenv(write_json, env)
         data_vote = read_json("../vote/votes.json")
@@ -300,6 +377,71 @@ return {
                 reply(table.concat(str, "\n"))
             end
         }, {
+            ["name"] = "remove_suggestion",
+            ["check"] = ADMIN_CHECK,
+            ["aliases"] = {}, ["args"] = {
+                { name = "target", type = "str" }
+            },
+            ["function"] = function()
+                data_suggestions[target] = nil
+            end
+        }, {
+            ["name"] = "suggestions2choices",
+            ["check"] = ADMIN_CHECK,
+            ["aliases"] = {}, ["args"] = {},
+            ["function"] = function()
+                local names, links = {}, {}
+
+                for _,link in pairs(suggestions) do
+                    local name = link:match("^https://anilist.co/manga/%d+/(.-)/")
+                    links[#links+1] = link
+                    names[#names+1] = name:gsub("-", " ")
+                end
+
+                data_choices.names = names
+                data_choices.links = links
+            end
+        }, {
+            ["name"] = "set_link",
+            ["check"] = ADMIN_CHECK,
+            ["aliases"] = {}, ["args"] = {
+                { name = "idx", type = "int" },
+                { name = "link", type = "string" }
+            },
+            ["function"] = function()
+                data_choices.links[idx] = link
+            end
+        }, {
+            ["name"] = "set_name",
+            ["check"] = ADMIN_CHECK,
+            ["aliases"] = {}, ["args"] = {
+                { name = "idx", type = "int" },
+                { name = "name", type = "string" }
+            },
+            ["function"] = function()
+                data_choices.names[idx] = name
+            end
+        }, {
+            ["name"] = "reload",
+            ["check"] = ADMIN_CHECK,
+            ["aliases"] = {}, ["args"] = {},
+            ["function"] = function()
+                data_vote = read_json("../vote/votes.json")
+                data_voters = read_json("../vote/voters.json")
+                data_choices = read_json("../vote/choices.json")
+                data_suggestions = read_json("../vote/suggestions.json")
+            end
+        }, {
+            ["name"] = "save",
+            ["check"] = ADMIN_CHECK,
+            ["aliases"] = {}, ["args"] = {},
+            ["function"] = function()
+                write_json("../vote/votes.json", data_vote)
+                write_json("../vote/voters.json", data_voters)
+                write_json("../vote/choices.json", data_choices)
+                write_json("../vote/suggestions.json", data_suggestions)
+            end
+        }, {
             ["name"] = "open",
             ["check"] = ADMIN_CHECK,
             ["aliases"] = { "start" }, ["args"] = {},
@@ -310,11 +452,27 @@ return {
         }, {
             ["name"] = "close",
             ["check"] = ADMIN_CHECK,
-            ["aliases"] = { "end" }, ["args"] = {},
+            ["aliases"] = { "stop" }, ["args"] = {},
             ["function"] = function()
                 data_choices.running = false
                 reply("Voting now closed.")
             end
-        } }
+        }, {
+            ["name"] = "s_open",
+            ["check"] = ADMIN_CHECK,
+            ["aliases"] = { "s_start" }, ["args"] = {},
+            ["function"] = function()
+                data_suggestions.running = true
+                reply("Suggestions now open.")
+            end
+        }, {
+            ["name"] = "s_close",
+            ["check"] = ADMIN_CHECK,
+            ["aliases"] = { "s_stop" }, ["args"] = {},
+            ["function"] = function()
+                data_suggestions.running = false
+                reply("Suggestions now closed.")
+            end
+        }  }
     }
 }

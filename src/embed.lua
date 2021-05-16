@@ -77,9 +77,11 @@ function builder()
         return {embed=self.__data}
     end
 
-    function builder:send(c)
+    function builder:send(c, content)
         if c.channel then c = c.channel end
-        return c:send(self:build())
+        local data = self:build()
+        data.content = content
+        return c:send(data)
     end
 
     return builder
