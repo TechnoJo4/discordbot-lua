@@ -12,4 +12,4 @@ for _,link in pairs(suggestions) do
     names[#names+1] = name:gsub("-", " ")
 end
 
-fs.writeFileSync("choices.json", json.encode({ names = names, links = links }))
+fs.writeFileSync("choices.json", json.encode({ running = true, names = names, links = links }))

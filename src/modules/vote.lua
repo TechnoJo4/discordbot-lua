@@ -2,6 +2,7 @@
 
 local GUILD = "332665699455729665" -- tachiyomi "349436576037732353"
 local ROLE = "800068353820852265" -- tachiyomi "842766939675033600"
+local ADMIN_ROLE = "800068353820852265" -- tachiyomi "842824047855403008"
 
 local SUGGESTION_PATTERN = "^https://anilist.co/manga/%d+/.-/"
 
@@ -16,8 +17,9 @@ you can then read and process the results saved in votes.json
 
 INITIALIZATION:
     1. create a "vote" folder alongside "src"
-    2. create "votes.json", "voters.json", "suggestions.json" and "choices.json" inside
-    3. follow reset instructions below
+    2. create a "backup" folder inside "vote"
+    3. create "votes.json", "voters.json", "suggestions.json" and "choices.json" inside
+    4. follow reset instructions below
 
 HOW TO RESET:
     resetting votes.json, voters.json, suggestions.json is just a matter
@@ -26,6 +28,7 @@ HOW TO RESET:
 
     choices.json has to be manually filled with contents in the format:
         {
+            "running": true,
             "names": [
                 "name1",
                 "name2",
@@ -39,6 +42,26 @@ HOW TO RESET:
         }
 
     (the names and links arrays must be the same length)
+
+POSSIBLE WEIGHTING ADJUSTEMENTS:
+
+    Default: (0.5 ^ (n - 1))
+    Result: 1, 0.5, 0.25, 0.125, ...
+
+    To favor choices 3+ more, (1 / n) can be used.
+    Result: 1, 0.5, 0.33333, 0.25, ...
+
+    To give more weight to the first choice and less to everything
+    afterwards, the default may be used with a lower value instead of 0.5
+
+    Example: ((1/3) ^ (n - 1))
+    Result: 1, 0.33333, 0.11111, 0.037037, ...
+
+    Similarly, you can give more weight to choices 2+ by using a higher
+    constant than 0.5 in the default formula.
+
+    Example: (0.8 ^ (n - 1))
+    Result: 1, 0.8, 0.64, 0.521, 0.4096, ...
 
 --]]
 
@@ -59,7 +82,20 @@ local function CHECK()
     -- verify member/role
     local member = l_guild:getMember(user)
     if not member or not member:hasRole(ROLE) then
-        return false, "This command is reserved to members of the tachiyomi book club."
+        return false, "This command is reserved to members of the Tachiyomi Book Club."
+    end
+
+    return true
+end
+
+local function ADMIN_CHECK()
+    -- lazy load guild
+    l_guild = l_guild or client:getGuild(GUILD)
+
+    -- verify member/role
+    local member = l_guild:getMember(user)
+    if not member or not member:hasRole(ADMIN_ROLE) then
+        return false, "This command is reserved to administators of the Tachiyomi Book Club."
     end
 
     return true
@@ -79,10 +115,10 @@ local choices_text
 -- create hourly backups (use in case of rigged voting or bad teardown)
 local clock = discordia.Clock()
 local function backup()
-    local dt = os.date("!%m.%d.%H")
-    write_json("../vote/votes.backup."..dt..".json", data_vote)
-    write_json("../vote/voters.backup."..dt..".json", data_voters)
-    write_json("../vote/suggestions.backup."..dt..".json", data_suggestions)
+    local dt = os.date("%m-%d.%H")
+    write_json("../vote/backup/votes."..dt..".json", data_vote)
+    write_json("../vote/backup/voters."..dt..".json", data_voters)
+    write_json("../vote/backup/suggestions."..dt..".json", data_suggestions)
 end
 clock:on("hour", backup)
 clock:start(true)
@@ -111,6 +147,15 @@ return {
         ["check"] = CHECK,
         ["aliases"] = { "entries" }, ["args"] = {},
         ["function"] = function()
+            if not data_choices.running then
+                Embed()
+                    :setColor(0xFF0000)
+                    :setTitle("Error")
+                    :setDescription("Voting is currently closed.")
+                    :send(m)
+                return
+            end
+
             if not choices_text then
                 local amm = #data_choices.names
                 local len = #tostring(amm) + 1
@@ -159,6 +204,15 @@ return {
             { name = "choices", type = "int+" },
         },
         ["function"] = function()
+            if not data_choices.running then
+                Embed()
+                    :setColor(0xFF0000)
+                    :setTitle("Error")
+                    :setDescription("Voting is currently closed.")
+                    :send(m)
+                return
+            end
+
             if data_voters[u.id] then
                 Embed()
                     :setColor(0xFF0000)
@@ -204,10 +258,63 @@ return {
             data_voters[user.id] = true
 
             for n,choice in ipairs(choices) do
-                data_vote[choice] = (data_vote[choice] or 0) + (1 / n)
+                data_vote[choice] = (data_vote[choice] or 0) + (0.5 ^ (n - 1))
             end
 
             reply("Successfully voted.")
         end
-    } }
+    } },
+    groups = {
+        admin = { {
+            ["name"] = "suggestions",
+            ["check"] = ADMIN_CHECK,
+            ["aliases"] = {}, ["args"] = {},
+            ["function"] = function()
+                local i = 1
+                local str = {}
+                for k,v in pairs(data_suggestions) do
+                    str[i] = "<"..v.."> (suggested by user `"..k.."`)"
+                    i = i + 1
+                end
+
+                reply(table.concat(str, "\n"))
+            end
+        },{
+            ["name"] = "votes",
+            ["check"] = ADMIN_CHECK,
+            ["aliases"] = { "show" }, ["args"] = {},
+            ["function"] = function()
+                local sorted = {}
+                for i,v in pairs(data_vote) do
+                    sorted[i] = { i = i, votes = v }
+                end
+                table.sort(sorted, function(a, b)
+                    return a.votes > b.votes
+                end)
+
+                local str = {}
+                for i,v in pairs(sorted) do
+                    str[i] = ("<%s> (`%d %s`) - %d points"):format(data_choices.links[v.i], v.i, data_choices.names[v.i], v.votes)
+                end
+
+                reply(table.concat(str, "\n"))
+            end
+        }, {
+            ["name"] = "open",
+            ["check"] = ADMIN_CHECK,
+            ["aliases"] = { "start" }, ["args"] = {},
+            ["function"] = function()
+                data_choices.running = true
+                reply("Voting now open.")
+            end
+        }, {
+            ["name"] = "close",
+            ["check"] = ADMIN_CHECK,
+            ["aliases"] = { "end" }, ["args"] = {},
+            ["function"] = function()
+                data_choices.running = false
+                reply("Voting now closed.")
+            end
+        } }
+    }
 }
