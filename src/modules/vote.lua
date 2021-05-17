@@ -9,6 +9,7 @@ local SUGGESTION_PATTERN = "^https://anilist.co/manga/%d+/.-/"
 local AUTOMATE = true
 local INFO_CHANNEL = "456261147864203276" -- tachiyomi "842823870288363560"
 local AUTO_PING = "<@&800068353820852265>" -- tachiyomi "<@&842766939675033600>"
+local COOLDOWN_LENGTH = 4
 
 math.randomseed(os.time())
 
@@ -38,12 +39,12 @@ COMMANDS:
     `admin suggestions2choices` - Create vote entries from user suggestions
     `admin set_name <entry id> <name>` - Set an entry's name
     `admin set_link <entry id> <link>` - Set an entry's link
-
+    `admin send_json <name>` - Sends internal json. Use `admin save` beforehand to get up-to-date data. `<name>` can be one of: `votes`, `voters`, `suggestions`, `genres`, `choices`.
 
 INITIALIZATION:
     1. create a "vote" folder alongside "src"
     2. create a "backup" folder inside "vote"
-    3. create "votes.json", "voters.json", "suggestions.json" and "choices.json" inside
+    3. create "votes.json", "voters.json", "suggestions.json", "genres.json" and "choices.json" inside
     4. follow reset instructions below
 
 HOW TO RESET:
@@ -94,6 +95,7 @@ local data_vote
 local data_voters
 local data_choices
 local data_suggestions
+local data_genres
 
 local l_guild
 local info_channel
@@ -138,7 +140,14 @@ end
 
 local choices_text
 
-local genres = { "Action", "Adventure", "Ecchi", "Gender Bender", "Horror", "Mystery", "Romance", "Sci-fi", "Supernatural", "Yaoi/Shounen Ai", "Yuri/Shoujo Ai", "Comedy", "Drama", "Fantasy", "Harem", "Historical", "Martial Arts", "Psychological", "School Life", "Slice of Life", "Sports", "Tragedy" }
+local function has(tbl, v)
+    for _,tv in pairs(tbl) do
+        if v == tv then
+            return true
+        end
+    end
+    return false
+end
 
 -- create hourly backups (use in case of rigged voting or bad teardown)
 local clock = discordia.Clock()
@@ -152,11 +161,32 @@ local function automation()
         local suggestions_open = (dt.wday == 6 and dt.hour >= 4 and dt.hour < 16)
         if data_suggestions.running ~= suggestions_open then
             if suggestions_open then
+                -- cooldown check
+                local genre
+                repeat
+                    genre = data_genres.genres[math.random(1, #data_genres.genres)]
+                until not has(data_genres.in_cooldown, genre)
+
+                -- add to cooldown list
+                if #data_genres.in_cooldown >= COOLDOWN_LENGTH then
+                    -- pop oldest in cooldown
+                    for i=2,COOLDOWN_LENGTH do
+                        data_genres.in_cooldown[i-1] = data_genres.in_cooldown[i]
+                    end
+                    data_genres.in_cooldown[COOLDOWN_LENGTH] = nil
+                end
+
+                data_genres.in_cooldown[#data_genres.in_cooldown+1] = genre
+
+                -- send message
                 Embed()
                     :setColor(COLOR)
                     :setTitle("Genre of the Week")
-                    :setDescription("The chosen genre was: **%s**.\nSuggestions are now open.", genres[math.random(1, #genres)])
+                    :setDescription("The chosen genre was: **%s**.\nSuggestions are now open.", genre)
                     :send(info_channel, AUTO_PING)
+
+                -- write genres.json to save cooldown
+                write_json("../vote/backup/genres.json", data_genres)
             else
                 Embed()
                     :setColor(ECOLOR)
@@ -208,14 +238,17 @@ return {
         setfenv(automation, env)
         setfenv(read_json, env)
         setfenv(write_json, env)
+
         data_vote = read_json("../vote/votes.json")
         data_voters = read_json("../vote/voters.json")
+        data_genres = read_json("../vote/genres.json")
         data_choices = read_json("../vote/choices.json")
         data_suggestions = read_json("../vote/suggestions.json")
     end,
     teardown = function()
         write_json("../vote/votes.json", data_vote)
         write_json("../vote/voters.json", data_voters)
+        write_json("../vote/genres.json", data_genres)
         write_json("../vote/suggestions.json", data_suggestions)
     end,
     commands = { {
@@ -255,6 +288,15 @@ return {
             { name = "link", type = "+" }
         },
         ["function"] = function()
+            if not data_suggestions.running then
+                Embed()
+                    :setColor(0xFF0000)
+                    :setTitle("Error")
+                    :setDescription("Voting is currently closed.")
+                    :send(m)
+                return
+            end
+
             local old = data_suggestions[u.id]
 
             if not link:match(SUGGESTION_PATTERN) then
@@ -399,6 +441,9 @@ return {
 
                 data_choices.names = names
                 data_choices.links = links
+
+                write_json("../vote/choices.json", data_choices)
+                reply("```json\n%s\n```", json.encode(data_choices))
             end
         }, {
             ["name"] = "set_link",
@@ -409,6 +454,7 @@ return {
             },
             ["function"] = function()
                 data_choices.links[idx] = link
+                reply("Success.")
             end
         }, {
             ["name"] = "set_name",
@@ -419,6 +465,7 @@ return {
             },
             ["function"] = function()
                 data_choices.names[idx] = name
+                reply("Success.")
             end
         }, {
             ["name"] = "reload",
@@ -427,8 +474,10 @@ return {
             ["function"] = function()
                 data_vote = read_json("../vote/votes.json")
                 data_voters = read_json("../vote/voters.json")
+                data_genres = read_json("../vote/genres.json")
                 data_choices = read_json("../vote/choices.json")
                 data_suggestions = read_json("../vote/suggestions.json")
+                reply("Success.")
             end
         }, {
             ["name"] = "save",
@@ -437,8 +486,10 @@ return {
             ["function"] = function()
                 write_json("../vote/votes.json", data_vote)
                 write_json("../vote/voters.json", data_voters)
+                write_json("../vote/genres.json", data_genres)
                 write_json("../vote/choices.json", data_choices)
                 write_json("../vote/suggestions.json", data_suggestions)
+                reply("Success.")
             end
         }, {
             ["name"] = "open",
@@ -472,6 +523,15 @@ return {
                 data_suggestions.running = false
                 reply("Suggestions now closed.")
             end
-        }  }
+        }, {
+            ["name"] = "send_json",
+            ["check"] = ADMIN_CHECK,
+            ["aliases"] = {}, ["args"] = {
+                { name = "name", type = "string" }
+            },
+            ["function"] = function()
+                reply("```json\n%s\n```", fs.readFileSync(("../vote/%s.json"):format(name)))
+            end
+        } }
     }
 }
