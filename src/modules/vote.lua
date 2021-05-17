@@ -17,10 +17,9 @@ math.randomseed(os.time())
 
 --[[ DOCUMENTATION
 
-im too lazy to make a way to close the vote or whatever so just
-shutdown the bot (use ~shutdown to make sure teardown happens
-and results are saved) when you want to close voting for the week.
-you can then read and process the results saved in votes.json
+NOTES:
+    Use the shutdown command to shutdown the bot to make sure teardown
+    happens and results are saved properly.
 
 COMMANDS:
     `suggest <anilist link>` - Suggest a book choice
@@ -42,17 +41,17 @@ COMMANDS:
     `admin send_json <name>` - Sends internal json. Use `admin save` beforehand to get up-to-date data. `<name>` can be one of: `votes`, `voters`, `suggestions`, `genres`, `choices`.
 
 INITIALIZATION:
-    1. create a "vote" folder alongside "src"
-    2. create a "backup" folder inside "vote"
-    3. create "votes.json", "voters.json", "suggestions.json", "genres.json" and "choices.json" inside
-    4. follow reset instructions below
+    1. create a "backup" folder inside "vote"
+    2. if needed, follow reset instructions below
 
 HOW TO RESET:
-    resetting votes.json, voters.json, suggestions.json is just a matter
-    of replacing the contents of the file with "{}" (an empty json object)
+    votes.json and voters.json:
+        {}
 
+    suggestions.json:
+        {"running":true}
 
-    choices.json has to be manually filled with contents in the format:
+    choices.json format:
         {
             "running": true,
             "names": [
@@ -67,7 +66,7 @@ HOW TO RESET:
             ]
         }
 
-    (the names and links arrays must be the same length)
+        (the names and links arrays must be the same length)
 
 POSSIBLE WEIGHTING ADJUSTEMENTS:
 
