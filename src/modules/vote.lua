@@ -422,10 +422,13 @@ return {
             ["name"] = "remove_suggestion",
             ["check"] = ADMIN_CHECK,
             ["aliases"] = {}, ["args"] = {
-                { name = "target", type = "str" }
+                { name = "targets", type = "string+" }
             },
             ["function"] = function()
-                data_suggestions[target] = nil
+                for _,v in pairs(targets) do
+                    data_suggestions[target] = nil
+                end
+                reply("Success.")
             end
         }, {
             ["name"] = "suggestions2choices",
