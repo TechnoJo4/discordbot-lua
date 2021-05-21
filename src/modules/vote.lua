@@ -390,8 +390,10 @@ return {
                 local i = 1
                 local str = {}
                 for k,v in pairs(data_suggestions) do
-                    str[i] = "<"..v.."> (suggested by user `"..k.."`)"
-                    i = i + 1
+                    if k ~= "running" then
+                        str[i] = "<"..v.."> (suggested by user `"..k.."`)"
+                        i = i + 1
+                    end
                 end
 
                 reply(table.concat(str, "\n"))
@@ -432,10 +434,22 @@ return {
             ["function"] = function()
                 local names, links = {}, {}
 
-                for _,link in pairs(suggestions) do
-                    local name = link:match("^https://anilist.co/manga/%d+/(.-)/")
-                    links[#links+1] = link
-                    names[#names+1] = name:gsub("-", " ")
+                for k,link in pairs(suggestions) do
+                    if k ~= "running" then
+                        local dup = false
+                        for _,v in ipairs(links) do
+                            if link == v then
+                                dup = true
+                                break
+                            end
+                        end
+
+                        if not dup then
+                            local name = link:match("^https://anilist.co/manga/%d+/(.-)/")
+                            links[#links+1] = link
+                            names[#names+1] = name:gsub("-", " ")
+                        end
+                    end
                 end
 
                 data_choices.names = names
