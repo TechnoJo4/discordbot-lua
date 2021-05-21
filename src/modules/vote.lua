@@ -426,7 +426,7 @@ return {
             },
             ["function"] = function()
                 for _,v in pairs(targets) do
-                    data_suggestions[target] = nil
+                    data_suggestions[v] = nil
                 end
                 reply("Success.")
             end
