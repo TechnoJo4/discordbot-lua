@@ -248,6 +248,7 @@ return {
         write_json("../vote/votes.json", data_vote)
         write_json("../vote/voters.json", data_voters)
         write_json("../vote/genres.json", data_genres)
+        write_json("../vote/choices.json", data_choices)
         write_json("../vote/suggestions.json", data_suggestions)
     end,
     commands = { {
@@ -437,7 +438,7 @@ return {
             ["function"] = function()
                 local names, links = {}, {}
 
-                for k,link in pairs(suggestions) do
+                for k,link in pairs(data_suggestions) do
                     if k ~= "running" then
                         local dup = false
                         for _,v in ipairs(links) do
