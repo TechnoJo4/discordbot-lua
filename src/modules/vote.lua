@@ -241,29 +241,64 @@ local help_messages do
             :setDescription([[
 __How to suggest__
 
-    `bc suggest <AniList Link>`
+`bc suggest <AniList Link>`
 
 __How to vote__
 
-    `bc choices`
-    `bc vote 2 6 4`
+`bc choices`
+`bc vote 2 6 4`
 
-    The above would vote for, in order of priority, entry `2`, followed by entry `6` and then entry `4`.
+The above would vote for, in order of priority, entry `2`, followed by entry `6` and then entry `4`.
 
-    You are __not__ limited to any specific amount of votes, but each entry after the first will receive half the amount of points of the previous.
+You are __not__ limited to any specific amount of votes, but each entry after the first will receive half the amount of points of the previous.
 
 __More Help__
 
-    Send `bc help weighting` for more detailed information about how entries get points based on your votes.
-    Send `bc help admin` to know about commands available to Book Club Leaders.
+Send `bc help admin` to know about commands available to Book Club Leaders.
+Send `bc help weighting` for more detailed information about how entries get points based on your votes.
 ]]):build(),
         admin = topic("Leader Commands")
             :setDescription([[
-TODO
+__Voting and votes__
+Use `bc admin open` and `bc admin close` to open and close voting.
+
+`bc admin votes` shows all entries and their accumulated vote points.
+`bc admin top` shows the currently winning entry.
+`bc admin reset_votes` resets all user votes.
+
+__Suggestions__
+Use `bc admin s_open` and `bc admin s_close` to open and close suggestions.
+
+`bc admin suggestions` shows all suggestions.
+`bc admin reset_suggestions` removes all suggestions.
+`bc admin remove_suggestion <User ID>` removes a user's suggestion.
+
+__Voting choices__
+`bc admin suggestions2choices` converts user suggestions to voting entries.
+`bc admin set_name <ID> <Name>` corrects the name for a voting entry.
+`bc admin set_link <ID> <AniList Link>` corrects the link for a voting entry.
+
+__Data__
+`bc admin save`
+`bc admin reload`
+`bc admin send_json <votes | voters | suggestions | genres | choices>`
 ]]):build(),
-        weighting = topic("Vote Weigthing")
+        weighting = topic("Vote Weigthing Math Stuff")
             :setDescription([[
-TODO
+__The Formula__
+`(0.5 ^ (n - 5))`
+
+__How?__
+The above is calculated with `n` being the vote's index for each choice you make. Your primary vote has `n = 1`, the 2nd vote has `n = 2`, etc..
+Fill it in the formula, calculate, add the result to the entry's points.
+
+__Why?__
+Let's break it down to a more general case: `(v ^ (n - h))`. Exponentiation is used so each vote is less powerful than the previous by the predefined constant.
+
+In this context, voting and accumulating points, the `h` constant doesn't matter. Because of how the votes are counted in the end, `w` could be anything, and the order of the winners would be the exact same. `5` is used to give a sense that voting for multiple entries is worth something.
+It's also the number `n` at which the vote power for an entry becomes `1`, because `x^0 = 1`.
+
+`v` defines how steep the curve is. `0.5` means that each vote has half the value of the previous, which was chosen for two reasons. Firstly, it's quite an intuitive calculation to halve something, but the main and second reason is so that 2 secondary votes is equivalent so a primary vote (and the same applies for any value of `n-1` and `n`, because of exponentiation).
 ]]):build(),
     }
 end
@@ -271,6 +306,7 @@ end
 local help_alias = {
     ["default"] = "base", ["commands"] = "base",
     ["leader"] = "admin",
+    ["math"] = "weighting",
     ["weight"] = "weighting", ["weights"] = "weighting",
     ["points"] = "weighting", ["formula"] = "weighting",
     ["borda"] = "weighting", ["count"] = "weighting", ["counting"] = "weighting",
