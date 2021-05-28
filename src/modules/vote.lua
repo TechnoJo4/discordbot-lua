@@ -8,6 +8,7 @@ local SUGGESTION_PATTERN = "^https://anilist.co/manga/%d+/.-/"
 
 local AUTOMATE = true
 local INFO_CHANNEL = "456261147864203276" -- tachiyomi "842823870288363560"
+local TALK_CHANNEL = "842768821382414346"
 local AUTO_PING = "<@&800068353820852265>" -- tachiyomi "<@&842766939675033600>"
 local COOLDOWN_LENGTH = 4
 
@@ -134,11 +135,13 @@ end
 
 -- create hourly backups (use in case of rigged voting or bad teardown)
 local clock = discordia.Clock()
+local discussion_open_current
 local function automation()
     if AUTOMATE then
         local dt = os.date("!*t")
 
         info_channel = info_channel or client:getChannel(INFO_CHANNEL)
+        talk_channel = talk_channel or client:getChannel(TALK_CHANNEL)
 
         -- automate suggestions open/close, alongside with genre randomization
         local suggestions_open = (dt.wday == 6 and dt.hour >= 4 and dt.hour < 16)
@@ -204,6 +207,23 @@ local function automation()
 
             -- actually close voting
             data_choices.running = vote_open
+        end
+
+        local discussion_open = (dt.wday == 7 or dt.wday == 1)
+        if discussion_open_current == nil then
+            discussion_open_current = discussion_open
+        elseif discussion_open_current ~= discussion_open then
+            if discussion_open then
+                Embed()
+                    :setColor(COLOR)
+                    :setDescription("Spoiler discussion is now allowed.")
+                    :send(talk_channel)
+            else
+                Embed()
+                    :setColor(ECOLOR)
+                    :setDescription("Spoiler discussion has ended and is now NOT allowed.")
+                    :send(talk_channel)
+            end
         end
     end
 
