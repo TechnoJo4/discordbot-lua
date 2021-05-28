@@ -24,21 +24,6 @@ NOTES:
 COMMANDS:
     Use the `help` command
 
-
-    `admin open` - Open voting
-    `admin close` - Close voting
-    `admin s_open` - Open suggestions
-    `admin s_close` - Close suggestions
-    `admin save` - Save json data
-    `admin reload` - Reload json data
-    `admin votes` - Show vote points for entries
-    `admin suggestions` - Show all user suggestions
-    `admin remove_suggestion <user id>` - Remove a user's suggestion
-    `admin suggestions2choices` - Create vote entries from user suggestions
-    `admin set_name <entry id> <name>` - Set an entry's name
-    `admin set_link <entry id> <link>` - Set an entry's link
-    `admin send_json <name>` - Sends internal json. Use `admin save` beforehand to get up-to-date data. `<name>` can be one of: `votes`, `voters`, `suggestions`, `genres`, `choices`.
-
 INITIALIZATION:
     1. create a "backup" folder inside "vote"
     2. if needed, follow reset instructions below
@@ -159,6 +144,9 @@ local function automation()
         local suggestions_open = (dt.wday == 6 and dt.hour >= 4 and dt.hour < 16)
         if data_suggestions.running ~= suggestions_open then
             if suggestions_open then
+                -- clear old suggestions
+                data_suggestions = {}
+
                 -- cooldown check
                 local genre
                 repeat
@@ -555,7 +543,7 @@ return {
 
                 local diff = sorted[2].votes - sorted[1].votes
                 if diff < 0.05 then
-                    reply("Tie (or close). Top 2 are %f points apart.", diff)
+                    reply("Tie (or very close). Top 2 entries are %f points apart.", diff)
                 else
                     local v = sorted[1]
                     reply("<%s> (`%d %s`) is currently leading with %.2f points.", data_choices.links[v.i], v.i, data_choices.names[v.i], v.votes)
