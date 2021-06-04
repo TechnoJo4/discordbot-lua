@@ -181,6 +181,24 @@ local wrapall do
     end
 end
 
+-- setup signal handler to catch ctrl+c shutdown
+do
+    local uv = require("uv")
+    local sig = uv.new_signal()
+    uv.signal_start(sig, "sigint", function()
+        print("Got SIGINT, shutting down...")
+        for _,mod in pairs(modules) do
+            if mod.teardown then
+                print(mod.name .. " Module - Teardown...")
+                mod.teardown()
+            else
+                print(mod.name .. " Module has no teardown.")
+            end
+        end
+        os.exit()
+    end)
+end
+
 -- actually run
 do
     ---@param m Message
