@@ -216,14 +216,15 @@ local function automation()
             if discussion_open then
                 Embed()
                     :setColor(COLOR)
-                    :setDescription("Spoiler discussion is now allowed.")
+                    :setDescription("You may now freely discuss spoilers.")
                     :send(talk_channel)
             else
                 Embed()
                     :setColor(ECOLOR)
-                    :setDescription("Spoiler discussion has ended and is now NOT allowed.")
+                    :setDescription("Discussion has ended and spoilers are now NOT allowed.")
                     :send(talk_channel)
             end
+            discussion_open_current = discussion_open
         end
     end
 
@@ -263,7 +264,7 @@ You are __not__ limited to any specific amount of votes, but each entry after th
 __More Help__
 
 Send `bc help admin` to know about commands available to Book Club Leaders.
-Send `bc help weighting` for more detailed information about how entries get points based on your votes.
+Send `bc help weighting` for the detailed mathematical information about how entries get points.
 ]]):build(),
         admin = topic("Leader Commands")
             :setDescription([[
@@ -296,17 +297,16 @@ __Data__
 __The Formula__
 `(0.5 ^ (n - 5))`
 
-__How?__
-The above is calculated with `n` being the vote's index for each choice you make. Your primary vote has `n = 1`, the 2nd vote has `n = 2`, etc..
-Fill it in the formula, calculate, add the result to the entry's points.
-
 __Why?__
-Let's break it down to a more general case: `(v ^ (n - h))`. Exponentiation is used so each vote is less powerful than the previous by the predefined constant.
+The most general case of the formula is `(v ^ (n - h))`. Exponentiation is used so each vote is less powerful than the previous by a predefined constant `n`.
 
-In this context, voting and accumulating points, the `h` constant doesn't matter. Because of how the votes are counted in the end, `w` could be anything, and the order of the winners would be the exact same. `5` is used to give a sense that voting for multiple entries is worth something.
-It's also the number `n` at which the vote power for an entry becomes `1`, because `x^0 = 1`.
+In this context of voting and accumulating points, the `h` constant doesn't matter.
+Because of how the votes are counted in the end, `h` could be anything, and the order of the winners would be the exact same.
+`5` is used to give a sense that voting for multiple entries is worth something.
 
-`v` defines how steep the curve is. `0.5` means that each vote has half the value of the previous, which was chosen for two reasons. Firstly, it's quite an intuitive calculation to halve something, but the main and second reason is so that 2 secondary votes is equivalent so a primary vote (and the same applies for any value of `n-1` and `n`, because of exponentiation).
+`v` defines how steep the curve is. `0.5` means that each vote has half the value of the previous, which was chosen because the calculation is intuitive.
+
+This also means that two secondary votes is equivalent to one primary vote (and the same applies for any value of `n-1` and `n`).
 ]]):build(),
     }
 end
@@ -352,6 +352,7 @@ return {
         ["aliases"] = { "entries" }, ["args"] = {},
         ["function"] = function()
             if not data_choices.running then
+                choices_text = nil
                 Embed()
                     :setColor(ECOLOR)
                     :setTitle("Error")
@@ -610,6 +611,7 @@ return {
 
                 data_choices.names = names
                 data_choices.links = links
+                choices_text = nil
 
                 -- reset votes
                 data_vote = {}
@@ -654,6 +656,7 @@ return {
             },
             ["function"] = function()
                 data_choices.links[idx] = link
+                choices_text = nil
                 reply("Success.")
             end
         }, {
@@ -665,6 +668,7 @@ return {
             },
             ["function"] = function()
                 data_choices.names[idx] = name
+                choices_text = nil
                 reply("Success.")
             end
         }, {
@@ -677,6 +681,7 @@ return {
                 data_genres = read_json("../vote/genres.json")
                 data_choices = read_json("../vote/choices.json")
                 data_suggestions = read_json("../vote/suggestions.json")
+                choices_text = nil
                 reply("Success.")
             end
         }, {
