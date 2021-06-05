@@ -255,9 +255,9 @@ __How to suggest__
 __How to vote__
 
 `bc choices`
-`bc vote 2 6 4`
+`bc vote 2 6 7 3 11 4`
 
-The above would vote for, in order of priority, entry `2`, followed by entry `6` and then entry `4`.
+The above would vote for, in order of priority, entry `2`, followed by entry `6`, entry `7`, entry `3`, entry `11`, and finally entry `4`.
 
 You are __not__ limited to any specific amount of votes, but each entry after the first will receive half the amount of points of the previous.
 
@@ -562,8 +562,8 @@ return {
                     return a.votes > b.votes
                 end)
 
-                local diff = sorted[2].votes - sorted[1].votes
-                if diff < 0.05 then
+                local diff = sorted[1].votes - sorted[2].votes
+                if diff < 0.1 then
                     reply("Tie (or very close). Top 2 entries are %f points apart.", diff)
                 else
                     local v = sorted[1]
