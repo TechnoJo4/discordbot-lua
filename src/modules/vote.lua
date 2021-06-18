@@ -5,6 +5,7 @@ local ROLE = "800068353820852265" -- tachiyomi "842766939675033600"
 local ADMIN_ROLE = "800068353820852265" -- tachiyomi "842824047855403008"
 
 local SUGGESTION_PATTERN = "^https://anilist.co/manga/%d+/.-/"
+local SUGGESTION_PATTERN_NONAME = "^(https://anilist.co/manga/%d+)"
 
 local AUTOMATE = true
 local INFO_CHANNEL = "456261147864203276" -- tachiyomi "842823870288363560"
@@ -80,6 +81,8 @@ local data_voters
 local data_choices
 local data_suggestions
 local data_genres
+
+local data_log = {votes={}}
 
 local l_guild
 local info_channel
@@ -202,7 +205,13 @@ local function automation()
                     :setDescription("Voting is now closed. The winning entry will be announced shortly.")
                     :send(info_channel)
 
-                -- TODO: choose winner?
+                -- aggregate all data to a single log json file
+                data_log.choices = data_choices
+                data_log.suggestions = data_suggestions
+                data_log.genre_cooldown = data_genres.in_cooldown
+                write_json("../vote/log/"..os.date("!%Y-%m-%d")..".json", data_log)
+                data_log = { votes = {} }
+                write_json("../vote/log/temp.json", data_log)
             end
 
             -- actually close voting
@@ -229,6 +238,7 @@ local function automation()
     end
 
     local dt = os.date("%m-%d.%H")
+    write_json("../vote/log/temp.json", data_log)
     write_json("../vote/backup/votes."..dt..".json", data_vote)
     write_json("../vote/backup/voters."..dt..".json", data_voters)
     write_json("../vote/backup/suggestions."..dt..".json", data_suggestions)
@@ -294,19 +304,7 @@ __Data__
 ]]):build(),
         weighting = topic("Vote Weigthing Math Stuff")
             :setDescription([[
-__The Formula__
-`(0.5 ^ (n - 5))`
-
-__Why?__
-The most general case of the formula is `(v ^ (n - h))`. Exponentiation is used so each vote is less powerful than the previous by a predefined constant `n`.
-
-In this context of voting and accumulating points, the `h` constant doesn't matter.
-Because of how the votes are counted in the end, `h` could be anything, and the order of the winners would be the exact same.
-`5` is used to give a sense that voting for multiple entries is worth something.
-
-`v` defines how steep the curve is. `0.5` means that each vote has half the value of the previous, which was chosen because the calculation is intuitive.
-
-This also means that two secondary votes is equivalent to one primary vote (and the same applies for any value of `n-1` and `n`).
+Nothing to see here...
 ]]):build(),
     }
 end
@@ -333,6 +331,7 @@ return {
         setfenv(read_json, env)
         setfenv(write_json, env)
 
+        data_log = read_json("../vote/log/temp.json")
         data_vote = read_json("../vote/votes.json")
         data_voters = read_json("../vote/voters.json")
         data_genres = read_json("../vote/genres.json")
@@ -340,6 +339,7 @@ return {
         data_suggestions = read_json("../vote/suggestions.json")
     end,
     teardown = function()
+        write_json("../vote/log/temp.json", data_log)
         write_json("../vote/votes.json", data_vote)
         write_json("../vote/voters.json", data_voters)
         write_json("../vote/genres.json", data_genres)
@@ -418,6 +418,7 @@ return {
                 link = link:sub(2,-2)
             end
 
+            -- validate
             if not link:match(SUGGESTION_PATTERN) then
                 Embed()
                     :setColor(ECOLOR)
@@ -428,12 +429,41 @@ return {
                 return
             end
 
+            -- check for duplicates
+            local idlink = link:match(SUGGESTION_PATTERN_NONAME)
+            for k,v in pairs(data_suggestions) do
+                if k ~= u.id and k ~= "running" and v:match(SUGGESTION_PATTERN_NONAME) == idlink then
+                    Embed()
+                        :setColor(ECOLOR)
+                        :setTitle("Error")
+                        :setDescription("This has already been suggested.")
+                        :send(m)
+                    return
+                end
+            end
+
             data_suggestions[u.id] = link
             if old then
                 reply("Modified your suggestion from <%s> to <%s>.", old, link)
             else
                 reply("Added suggestion <%s>.", link)
             end
+        end
+    }, {
+        ["name"] = "suggestions",
+        ["check"] = CHECK,
+        ["aliases"] = {}, ["args"] = {},
+        ["function"] = function()
+            local i = 1
+            local str = {}
+            for k,v in pairs(data_suggestions) do
+                if k ~= "running" then
+                    str[i] = "<".. v:match(SUGGESTION_PATTERN_NONAME) ..">"
+                    i = i + 1
+                end
+            end
+
+            reply(table.concat(str, "\n"))
         end
     }, {
         ["name"] = "vote",
@@ -495,11 +525,17 @@ return {
 
             data_voters[user.id] = true
 
+            -- add to log
+            data_log.votes[#data_log.votes+1] = { time = os.time(), user = user.id, choices = choices }
+
+            -- add values to vote data
             local str = {}
             for n,choice in ipairs(choices) do
                 local value = (0.5 ^ (n - 5))
                 data_vote[choice] = data_vote[choice] + value
-                str[n] = (" - %s, giving it `%g points` \n"):format(data_choices.names[choice], value)
+                -- temporarily remove point info while we experiment with different voting systems.
+                str[n] = (" - %s\n"):format(data_choices.names[choice])
+                -- str[n] = (" - %s, giving it `%g points` \n"):format(data_choices.names[choice], value)
             end
 
             reply("Successfully voted for:\n%s", table.concat(str))
@@ -550,6 +586,50 @@ return {
                 reply(table.concat(str, "\n"))
             end
         }, {
+            ["name"] = "votes_rerun",
+            ["check"] = ADMIN_CHECK,
+            ["aliases"] = {}, ["args"] = {
+                { name = "func", type = "string" }
+            },
+            ["function"] = function()
+                -- compile weighting function
+                local f, err = loadstring("local n=...;return "..func)
+                if not f then
+                    reply(err)
+                    return
+                end
+
+                -- create new votes table
+                local votes = {}
+                for i,v in pairs(data_choices.names) do
+                    votes[i] = { i=i, votes=0 }
+                end
+
+                -- re-run computations
+                for _,tbl in pairs(data_log.votes) do
+                    for n,choice in ipairs(tbl.choices) do
+                        local suc, val = pcall(f, n)
+                        if not suc or type(val) ~= "number" then
+                            reply(val)
+                            return
+                        end
+                        votes[choice].votes = votes[choice].votes + val
+                    end
+                end
+
+                -- sort
+                table.sort(votes, function(a, b)
+                    return a.votes > b.votes
+                end)
+
+                local str = {}
+                for i,v in pairs(votes) do
+                    str[i] = ("<%s> (`%d %s`) - %.2f points"):format(data_choices.links[v.i], v.i, data_choices.names[v.i], v.votes)
+                end
+
+                reply(table.concat(str, "\n"))
+            end
+        }, {
             ["name"] = "top",
             ["check"] = ADMIN_CHECK,
             ["aliases"] = { "winner" }, ["args"] = {},
@@ -569,6 +649,21 @@ return {
                     local v = sorted[1]
                     reply("<%s> (`%d %s`) is currently leading with %.2f points.", data_choices.links[v.i], v.i, data_choices.names[v.i], v.votes)
                 end
+            end
+        }, {
+            ["name"] = "top2",
+            ["check"] = ADMIN_CHECK,
+            ["aliases"] = { "winner" }, ["args"] = {},
+            ["function"] = function()
+                local sorted = {}
+                for i,v in pairs(data_vote) do
+                    sorted[i] = { i = i, votes = v }
+                end
+                table.sort(sorted, function(a, b)
+                    return a.votes > b.votes
+                end)
+
+                reply("The top 2 entries are %f points apart.", sorted[1].votes - sorted[2].votes)
             end
         }, {
             ["name"] = "remove_suggestion",
@@ -689,6 +784,7 @@ return {
             ["check"] = ADMIN_CHECK,
             ["aliases"] = {}, ["args"] = {},
             ["function"] = function()
+                write_json("../vote/log/temp.json", data_log)
                 write_json("../vote/votes.json", data_vote)
                 write_json("../vote/voters.json", data_voters)
                 write_json("../vote/genres.json", data_genres)
