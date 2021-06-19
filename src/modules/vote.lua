@@ -321,6 +321,36 @@ for k,_ in pairs(help_messages) do
     help_alias[k] = k
 end
 
+local function CHOICES(admin)
+    return function()
+        if not admin and not data_choices.running then
+            choices_text = nil
+            Embed()
+                :setColor(ECOLOR)
+                :setTitle("Error")
+                :setDescription("Voting is currently closed.")
+                :send(m)
+            return
+        end
+
+        if not choices_text then
+            local amm = #data_choices.names
+            local len = #tostring(amm) + 1
+
+            local str = {}
+            for i=1,amm do
+                local s = tostring(i)
+                local n = data_choices.names[i]
+                str[i] = "`" .. s .. (" "):rep(len - #s) .. n .. "` <" .. data_choices.links[i] .. ">"
+            end
+
+            choices_text = table.concat(str, "\n")
+        end
+
+        reply(choices_text)
+    end
+end
+
 return {
     name = "Vote",
     emoji = "🗳️",
@@ -350,33 +380,7 @@ return {
         ["name"] = "choices",
         ["check"] = CHECK,
         ["aliases"] = { "entries" }, ["args"] = {},
-        ["function"] = function()
-            if not data_choices.running then
-                choices_text = nil
-                Embed()
-                    :setColor(ECOLOR)
-                    :setTitle("Error")
-                    :setDescription("Voting is currently closed.")
-                    :send(m)
-                return
-            end
-
-            if not choices_text then
-                local amm = #data_choices.names
-                local len = #tostring(amm) + 1
-
-                local str = {}
-                for i=1,amm do
-                    local s = tostring(i)
-                    local n = data_choices.names[i]
-                    str[i] = "`" .. s .. (" "):rep(len - #s) .. n .. "` <" .. data_choices.links[i] .. ">"
-                end
-
-                choices_text = table.concat(str, "\n")
-            end
-
-            reply(choices_text)
-        end
+        ["function"] = CHOICES(false)
     }, {
         ["name"] = "help",
         ["check"] = CHECK,
@@ -543,6 +547,11 @@ return {
     } },
     groups = {
         admin = { {
+            ["name"] = "choices",
+            ["check"] = ADMIN_CHECK,
+            ["aliases"] = { "entries" }, ["args"] = {},
+            ["function"] = CHOICES(true)
+        }, {
             ["name"] = "suggestions",
             ["check"] = ADMIN_CHECK,
             ["aliases"] = {}, ["args"] = {},
@@ -589,9 +598,17 @@ return {
             ["name"] = "votes_rerun",
             ["check"] = ADMIN_CHECK,
             ["aliases"] = {}, ["args"] = {
-                { name = "func", type = "string" }
+                { name = "func", type = "string" },
+                { name = "week", type = "string?" }
             },
             ["function"] = function()
+                local log = data_log
+                local l_choices = data_choices
+                if week then
+                    log = read_json("../vote/log/"..week..".json")
+                    l_choices = log.choices
+                end
+
                 -- compile weighting function
                 local f, err = loadstring("local n=...;return "..func)
                 if not f then
@@ -831,7 +848,10 @@ return {
                 { name = "name", type = "string" }
             },
             ["function"] = function()
-                reply("```json\n%s\n```", fs.readFileSync(("../vote/%s.json"):format(name)))
+                local f = name .. ".json"
+                reply({
+                    file = { f, fs.readFileSync("../vote/" .. f) }
+                })
             end
         } }
     }
