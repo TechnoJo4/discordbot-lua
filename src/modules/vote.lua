@@ -147,7 +147,7 @@ local function automation()
         talk_channel = talk_channel or client:getChannel(TALK_CHANNEL)
 
         -- automate suggestions open/close, alongside with genre randomization
-        local suggestions_open = (dt.wday == 6 and dt.hour >= 4 and dt.hour < 16)
+        local suggestions_open = (dt.wday == 5 and dt.hour >= 16 and dt.hour < 16)
         if data_suggestions.running ~= suggestions_open then
             if suggestions_open then
                 -- clear old suggestions
@@ -262,19 +262,33 @@ __How to suggest__
 
 `bc suggest <AniList Link>`
 
-__How to vote__
+__~~How to vote~~__
 
-`bc choices`
-`bc vote 2 6 7 3 11 4`
+~~`bc choices`~~
+~~`bc vote 2 6 7 3 11 4`~~
 
-The above would vote for, in order of priority, entry `2`, followed by entry `6`, entry `7`, entry `3`, entry `11`, and finally entry `4`.
+~~The above would vote for, in order of priority, entry `2`, followed by entry `6`, entry `7`, entry `3`, entry `11`, and finally entry `4`.~~
 
-You are __not__ limited to any specific amount of votes, but each entry after the first will receive half the amount of points of the previous.
+~~You are __not__ limited to any specific amount of votes, but each entry after the first will receive half the amount of points of the previous.~~
+
+See `bc help temp`
 
 __More Help__
 
 Send `bc help admin` to know about commands available to Book Club Leaders.
 Send `bc help weighting` for the detailed mathematical information about how entries get points.
+]]):build(),
+        temp = topic("Rejection Voting ⚠️")
+            :setDescription([[
+This week, as a test, rejection voting is used.
+
+Instead of voting for series you want to read, you reject series you do *not* want to read.
+
+For example, `bc reject 2 6 7 3 11 4`
+
+The above would vote ***against*** entries `2`, `6`, `7`, `3`, `11`, and `4`.
+
+You are __not__ limited to any specific amount of rejections.
 ]]):build(),
         admin = topic("Leader Commands")
             :setDescription([[
@@ -471,6 +485,15 @@ return {
         end
     }, {
         ["name"] = "vote",
+        ["check"] = ADMIN_CHECK,
+        ["aliases"] = {}, ["args"] = {
+            { name = "choices", type = "int*" },
+        },
+        ["function"] = function()
+            reply(help_messages.temp)
+        end
+    }, {
+        ["name"] = "reject",
         ["check"] = CHECK,
         ["aliases"] = {}, ["args"] = {
             { name = "choices", type = "int+" },
@@ -498,7 +521,7 @@ return {
                 Embed()
                     :setColor(ECOLOR)
                     :setTitle("Error")
-                    :setDescription("You must vote for at least one entries.")
+                    :setDescription("You must reject at least one entry.")
                     :send(m)
                 return
             end
@@ -535,14 +558,15 @@ return {
             -- add values to vote data
             local str = {}
             for n,choice in ipairs(choices) do
-                local value = (0.5 ^ (n - 5))
+                local value = -1 -- (0.5 ^ (n - 5))
                 data_vote[choice] = data_vote[choice] + value
+
                 -- temporarily remove point info while we experiment with different voting systems.
                 str[n] = (" - %s\n"):format(data_choices.names[choice])
                 -- str[n] = (" - %s, giving it `%g points` \n"):format(data_choices.names[choice], value)
             end
 
-            reply("Successfully voted for:\n%s", table.concat(str))
+            reply("Successfully voted against:\n%s", table.concat(str))
         end
     } },
     groups = {
@@ -743,6 +767,7 @@ return {
             ["check"] = ADMIN_CHECK,
             ["aliases"] = {}, ["args"] = {},
             ["function"] = function()
+                data_voters = {}
                 data_vote = {}
                 for i=1,#data_choices.names do
                     data_vote[i] = 0
