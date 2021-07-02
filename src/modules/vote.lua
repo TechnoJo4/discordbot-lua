@@ -262,16 +262,15 @@ __How to suggest__
 
 `bc suggest <AniList Link>`
 
-__~~How to vote~~__
+__How to vote__ **(New voting system)**
 
-~~`bc choices`~~
-~~`bc vote 2 6 7 3 11 4`~~
+You vote against series that you would not discuss in <#842768821382414346>, if selected.
 
-~~The above would vote for, in order of priority, entry `2`, followed by entry `6`, entry `7`, entry `3`, entry `11`, and finally entry `4`.~~
+For example, `bc reject 2 6 7 3 11 4`
 
-~~You are __not__ limited to any specific amount of votes, but each entry after the first will receive half the amount of points of the previous.~~
+The above would vote ***against*** entries `2`, `6`, `7`, `3`, `11`, and `4`.
 
-See `bc help temp`
+You are __not__ limited to any specific amount of rejections.
 
 __More Help__
 
@@ -282,7 +281,7 @@ Send `bc help weighting` for the detailed mathematical information about how ent
             :setDescription([[
 This week, as a test, rejection voting is used.
 
-Instead of voting for series you want to read, you reject series you do *not* want to read.
+Instead of voting for series you want to read, you vote against series that you would not discuss in <#842768821382414346>, if selected.
 
 For example, `bc reject 2 6 7 3 11 4`
 
