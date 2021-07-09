@@ -629,7 +629,7 @@ return {
 
                 reply(table.concat(str, "\n"))
             end
-        }, {
+        }, --[[{
             ["name"] = "eval",
             ["check"] = ADMIN_CHECK,
             ["aliases"] = {}, ["args"] = {
@@ -650,7 +650,7 @@ return {
                     return
                 end
             end
-        }, {
+        },]] {
             ["name"] = "votes_rerun",
             ["check"] = ADMIN_CHECK,
             ["aliases"] = {}, ["args"] = {
