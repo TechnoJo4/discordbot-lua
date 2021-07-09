@@ -136,6 +136,38 @@ local function has(tbl, v)
     return false
 end
 
+local function NEW_GENRE(ping)
+    -- clear old suggestions
+    data_suggestions = {}
+
+    -- cooldown check
+    local genre
+    repeat
+        genre = data_genres.genres[math.random(1, #data_genres.genres)]
+    until not has(data_genres.in_cooldown, genre)
+
+    -- add to cooldown list
+    if #data_genres.in_cooldown >= COOLDOWN_LENGTH then
+        -- pop oldest in cooldown
+        for i=2,COOLDOWN_LENGTH do
+            data_genres.in_cooldown[i-1] = data_genres.in_cooldown[i]
+        end
+        data_genres.in_cooldown[COOLDOWN_LENGTH] = nil
+    end
+
+    data_genres.in_cooldown[#data_genres.in_cooldown+1] = genre
+
+    -- send message
+    Embed()
+        :setColor(COLOR)
+        :setTitle("Genre of the Week")
+        :setDescription("The chosen genre was: **%s**.\nSuggestions are now open.", genre)
+        :send(info_channel, ping and AUTO_PING or "")
+
+    -- write genres.json to save cooldown
+    write_json("../vote/backup/genres.json", data_genres)
+end
+
 -- create hourly backups (use in case of rigged voting or bad teardown)
 local clock = discordia.Clock()
 local discussion_open_current
@@ -147,38 +179,10 @@ local function automation()
         talk_channel = talk_channel or client:getChannel(TALK_CHANNEL)
 
         -- automate suggestions open/close, alongside with genre randomization
-        local suggestions_open = (dt.wday == 5 and dt.hour >= 16 and dt.hour < 16)
+        local suggestions_open = (dt.wday == 5 and dt.hour >= 16) or (dt.wday == 6 and dt.hour < 16)
         if data_suggestions.running ~= suggestions_open then
             if suggestions_open then
-                -- clear old suggestions
-                data_suggestions = {}
-
-                -- cooldown check
-                local genre
-                repeat
-                    genre = data_genres.genres[math.random(1, #data_genres.genres)]
-                until not has(data_genres.in_cooldown, genre)
-
-                -- add to cooldown list
-                if #data_genres.in_cooldown >= COOLDOWN_LENGTH then
-                    -- pop oldest in cooldown
-                    for i=2,COOLDOWN_LENGTH do
-                        data_genres.in_cooldown[i-1] = data_genres.in_cooldown[i]
-                    end
-                    data_genres.in_cooldown[COOLDOWN_LENGTH] = nil
-                end
-
-                data_genres.in_cooldown[#data_genres.in_cooldown+1] = genre
-
-                -- send message
-                Embed()
-                    :setColor(COLOR)
-                    :setTitle("Genre of the Week")
-                    :setDescription("The chosen genre was: **%s**.\nSuggestions are now open.", genre)
-                    :send(info_channel, AUTO_PING)
-
-                -- write genres.json to save cooldown
-                write_json("../vote/backup/genres.json", data_genres)
+                NEW_GENRE(true)
             else
                 Embed()
                     :setColor(ECOLOR)
@@ -279,9 +283,9 @@ Send `bc help weighting` for the detailed mathematical information about how ent
 ]]):build(),
         temp = topic("Rejection Voting ⚠️")
             :setDescription([[
-This week, as a test, rejection voting is used.
+Rejection voting is now used.
 
-Instead of voting for series you want to read, you vote against series that you would not discuss in <#842768821382414346>, if selected.
+Instead of voting for series you want to read, you vote against series that you would not discuss in <#842768821382414346> if selected.
 
 For example, `bc reject 2 6 7 3 11 4`
 
@@ -315,20 +319,12 @@ __Data__
 `bc admin reload`
 `bc admin send_json <votes | voters | suggestions | genres | choices>`
 ]]):build(),
-        weighting = topic("Vote Weigthing Math Stuff")
-            :setDescription([[
-Nothing to see here...
-]]):build(),
     }
 end
 
 local help_alias = {
     ["default"] = "base", ["commands"] = "base",
     ["leader"] = "admin",
-    ["math"] = "weighting",
-    ["weight"] = "weighting", ["weights"] = "weighting",
-    ["points"] = "weighting", ["formula"] = "weighting",
-    ["borda"] = "weighting", ["count"] = "weighting", ["counting"] = "weighting",
 }
 for k,_ in pairs(help_messages) do
     help_alias[k] = k
@@ -370,6 +366,7 @@ return {
     requires = { "json" },
     setup = function()
         local env = getfenv()
+        setfenv(NEW_GENRE, env)
         setfenv(automation, env)
         setfenv(read_json, env)
         setfenv(write_json, env)
@@ -557,12 +554,8 @@ return {
             -- add values to vote data
             local str = {}
             for n,choice in ipairs(choices) do
-                local value = -1 -- (0.5 ^ (n - 5))
-                data_vote[choice] = data_vote[choice] + value
-
-                -- temporarily remove point info while we experiment with different voting systems.
+                data_vote[choice] = data_vote[choice] - 1
                 str[n] = (" - %s\n"):format(data_choices.names[choice])
-                -- str[n] = (" - %s, giving it `%g points` \n"):format(data_choices.names[choice], value)
             end
 
             reply("Successfully voted against:\n%s", table.concat(str))
@@ -574,6 +567,23 @@ return {
             ["check"] = ADMIN_CHECK,
             ["aliases"] = { "entries" }, ["args"] = {},
             ["function"] = CHOICES(true)
+        }, {
+            ["name"] = "automate",
+            ["check"] = ADMIN_CHECK,
+            ["aliases"] = { "entries" }, ["args"] = {
+                { name = "auto", type = "boolean" }
+            },
+            ["function"] = function()
+                AUTOMATE = auto
+                reply("AUTOMATE = "..tostring(auto))
+            end
+        }, {
+            ["name"] = "new_genre",
+            ["check"] = ADMIN_CHECK,
+            ["aliases"] = { "entries" }, ["args"] = {},
+            ["function"] = function()
+                NEW_GENRE(false)
+            end
         }, {
             ["name"] = "suggestions",
             ["check"] = ADMIN_CHECK,
@@ -616,6 +626,27 @@ return {
                 end
 
                 reply(table.concat(str, "\n"))
+            end
+        }, {
+            ["name"] = "eval",
+            ["check"] = ADMIN_CHECK,
+            ["aliases"] = {}, ["args"] = {
+                { name = "func", type = "string" }
+            },
+            ["function"] = function()
+                local f, err = loadstring(func)
+                if not f then
+                    reply(err)
+                    return
+                end
+
+                setfenv(f, getfenv())
+
+                local suc, err = pcall(f)
+                if not suc then
+                    reply(err)
+                    return
+                end
             end
         }, {
             ["name"] = "votes_rerun",
@@ -742,11 +773,12 @@ return {
                     end
                 end
 
-                reply("```json\n%s\n```", json.encode(data_choices))
 
                 data_choices.names = names
                 data_choices.links = links
                 choices_text = nil
+
+                reply("```json\n%s\n```", json.encode(data_choices))
 
                 -- reset votes
                 data_vote = {}
