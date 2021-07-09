@@ -137,6 +137,8 @@ local function has(tbl, v)
 end
 
 local function NEW_GENRE(ping)
+    info_channel = info_channel or client:getChannel(INFO_CHANNEL)
+
     -- clear old suggestions
     data_suggestions = {}
 
