@@ -268,13 +268,15 @@ __How to suggest__
 
 `bc suggest <AniList Link>`
 
+Use `bc suggestions` to see what others have suggested this week, to avoid duplicate suggestions.
+
 __How to vote__ **(New voting system)**
 
 You vote against series that you would not discuss in <#842768821382414346>, if selected.
 
-For example, `bc reject 2 6 7 3 11 4`
+First, read the options using `bc choices`, then, use `bc reject`.
 
-The above would vote ***against*** entries `2`, `6`, `7`, `3`, `11`, and `4`.
+For example, `bc reject 2 6 7 3 11 4` would vote ***against*** entries `2`, `6`, `7`, `3`, `11`, and `4`.
 
 You are __not__ limited to any specific amount of rejections.
 
