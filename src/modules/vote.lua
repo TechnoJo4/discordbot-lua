@@ -472,6 +472,15 @@ return {
         ["check"] = CHECK,
         ["aliases"] = {}, ["args"] = {},
         ["function"] = function()
+            if not data_suggestions.running then
+                Embed()
+                    :setColor(ECOLOR)
+                    :setTitle("Error")
+                    :setDescription("Suggestions are currently closed.")
+                    :send(m)
+                return
+            end
+
             local i = 1
             local str = {}
             for k,v in pairs(data_suggestions) do
