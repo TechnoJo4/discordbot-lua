@@ -14,6 +14,7 @@ local discordia = require('discordia')
 -- constants
 local PREFIX = "~"
 local LPREFIX = #PREFIX
+local CASE_INSENSITIVE = PREFIX:upper() ~= PREFIX:lower()
 
 local COLOR = 0x4321ff
 local ECOLOR = 0xFF0000
@@ -204,7 +205,15 @@ do
     ---@param m Message
     client:on("messageCreate", function(m)
         local c = m.content
-        if c:sub(1, LPREFIX) ~= PREFIX then return end
+        if CASE_INSENSITIVE then
+            if c:sub(1, LPREFIX):lower() ~= PREFIX:lower() then
+                return
+            end
+        else
+            if c:sub(1, LPREFIX) ~= PREFIX then
+                return
+            end
+        end
         if c:sub(1, 2) == "~~" then return end
         c = c:sub(1 + LPREFIX)
 
