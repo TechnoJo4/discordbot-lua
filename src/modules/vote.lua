@@ -143,8 +143,8 @@ local function NEW_GENRE(ping)
     data_suggestions = {}
 
     -- cooldown check
-    local genre
-    repeat
+    local genre = "Horror Oneshot" -- horror week: genre override
+    --[[repeat
         genre = data_genres.genres[math.random(1, #data_genres.genres)]
     until not has(data_genres.in_cooldown, genre)
 
@@ -157,7 +157,7 @@ local function NEW_GENRE(ping)
         data_genres.in_cooldown[COOLDOWN_LENGTH] = nil
     end
 
-    data_genres.in_cooldown[#data_genres.in_cooldown+1] = genre
+    data_genres.in_cooldown[#data_genres.in_cooldown+1] = genre]]
 
     -- send message
     Embed()
@@ -167,7 +167,7 @@ local function NEW_GENRE(ping)
         :send(info_channel, ping and AUTO_PING or "")
 
     -- write genres.json to save cooldown
-    write_json("../vote/backup/genres.json", data_genres)
+    --write_json("../vote/backup/genres.json", data_genres)
 end
 
 -- create hourly backups (use in case of rigged voting or bad teardown)
@@ -430,7 +430,7 @@ return {
                 return
             end
 
-            local old = data_suggestions[u.id]
+            --local old = data_suggestions[u.id]
 
             if #link >= 3 and link:sub(1,1) == "<" and link:sub(-1,-1) == ">" then
                 link = link:sub(2,-2)
@@ -460,12 +460,17 @@ return {
                 end
             end
 
-            data_suggestions[u.id] = link
-            if old then
-                reply("Modified your suggestion from <%s> to <%s>.", old, link)
-            else
-                reply("Added suggestion <%s>.", link)
+            -- horror week: multiple suggestions
+            local idx = 1
+            while data_suggestions[tostring(u.id) .. " " .. tostring(idx)] do
+                idx = idx + 1
             end
+            data_suggestions[tostring(u.id) .. " " .. tostring(idx)] = link
+            --if old then
+            --    reply("Modified your suggestion from <%s> to <%s>.", old, link)
+            --else
+            --    reply("Added suggestion <%s>.", link)
+            --end
         end
     }, {
         ["name"] = "suggestions",
