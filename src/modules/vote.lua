@@ -143,8 +143,8 @@ local function NEW_GENRE(ping)
     data_suggestions = {}
 
     -- cooldown check
-    local genre = "Horror Oneshot" -- horror week: genre override
-    --[[repeat
+    local genre
+    repeat
         genre = data_genres.genres[math.random(1, #data_genres.genres)]
     until not has(data_genres.in_cooldown, genre)
 
@@ -157,7 +157,7 @@ local function NEW_GENRE(ping)
         data_genres.in_cooldown[COOLDOWN_LENGTH] = nil
     end
 
-    data_genres.in_cooldown[#data_genres.in_cooldown+1] = genre]]
+    data_genres.in_cooldown[#data_genres.in_cooldown+1] = genre
 
     -- send message
     Embed()
@@ -167,7 +167,7 @@ local function NEW_GENRE(ping)
         :send(info_channel, ping and AUTO_PING or "")
 
     -- write genres.json to save cooldown
-    --write_json("../vote/backup/genres.json", data_genres)
+    write_json("../vote/backup/genres.json", data_genres)
 end
 
 -- create hourly backups (use in case of rigged voting or bad teardown)
@@ -302,7 +302,7 @@ You are __not__ limited to any specific amount of rejections.
 __Voting and votes__
 Use `bc admin open` and `bc admin close` to open and close voting.
 
-`bc admin votes` shows all entries and their accumulated vote points.
+`bc admin votes` shows all entries and their accumulated rejections.
 `bc admin top` shows the currently winning entry.
 `bc admin reset_votes` resets all user votes.
 
@@ -430,7 +430,7 @@ return {
                 return
             end
 
-            --local old = data_suggestions[u.id]
+            local old = data_suggestions[u.id]
 
             if #link >= 3 and link:sub(1,1) == "<" and link:sub(-1,-1) == ">" then
                 link = link:sub(2,-2)
@@ -460,17 +460,12 @@ return {
                 end
             end
 
-            -- horror week: multiple suggestions
-            local idx = 1
-            while data_suggestions[tostring(u.id) .. " " .. tostring(idx)] do
-                idx = idx + 1
+            data_suggestions[u.id] = link
+            if old then
+                reply("Modified your suggestion from <%s> to <%s>.", old, link)
+            else
+                reply("Added suggestion <%s>.", link)
             end
-            data_suggestions[tostring(u.id) .. " " .. tostring(idx)] = link
-            --if old then
-            --    reply("Modified your suggestion from <%s> to <%s>.", old, link)
-            --else
-            --    reply("Added suggestion <%s>.", link)
-            --end
         end
     }, {
         ["name"] = "suggestions",
@@ -640,33 +635,20 @@ return {
 
                 local str = {}
                 for i,v in pairs(sorted) do
-                    str[i] = ("<%s> (`%d %s`) - %.2f points"):format(data_choices.links[v.i], v.i, data_choices.names[v.i], v.votes)
+                    str[i] = ("<%s> (%s) - %d rejections"):format(data_choices.links[v.i], data_choices.names[v.i], -v.votes)
                 end
 
-                reply(table.concat(str, "\n"))
-            end
-        }, --[[{
-            ["name"] = "eval",
-            ["check"] = ADMIN_CHECK,
-            ["aliases"] = {}, ["args"] = {
-                { name = "func", type = "string" }
-            },
-            ["function"] = function()
-                local f, err = loadstring(func)
-                if not f then
-                    reply(err)
-                    return
-                end
-
-                setfenv(f, getfenv())
-
-                local suc, err = pcall(f)
-                if not suc then
-                    reply(err)
-                    return
+                str = table.concat(str, "\n")
+                print(#str)
+                if #str < 1900 then
+                    reply(str)
+                else
+                    reply({
+                        file = { "votes.txt", str }
+                    })
                 end
             end
-        },]] {
+        }, {
             ["name"] = "votes_rerun",
             ["check"] = ADMIN_CHECK,
             ["aliases"] = {}, ["args"] = {
@@ -713,10 +695,17 @@ return {
 
                 local str = {}
                 for i,v in pairs(votes) do
-                    str[i] = ("<%s> (`%d %s`) - %.2f points"):format(data_choices.links[v.i], v.i, data_choices.names[v.i], v.votes)
+                    str[i] = ("<%s> (%s) - %d rejections"):format(data_choices.links[v.i], data_choices.names[v.i], -v.votes)
                 end
 
-                reply(table.concat(str, "\n"))
+                str = table.concat(str, "\n")
+                if #str < 1900 then
+                    reply(str)
+                else
+                    reply({
+                        file = { "votes.txt", str }
+                    })
+                end
             end
         }, {
             ["name"] = "top",
@@ -736,7 +725,7 @@ return {
                     reply("Tie (or very close). Top 2 entries are %f points apart.", diff)
                 else
                     local v = sorted[1]
-                    reply("<%s> (`%d %s`) is currently leading with %.2f points.", data_choices.links[v.i], v.i, data_choices.names[v.i], v.votes)
+                    reply("<%s> (%s) is currently leading with %d rejections.", data_choices.links[v.i], data_choices.names[v.i], -v.votes)
                 end
             end
         }, {
@@ -752,7 +741,7 @@ return {
                     return a.votes > b.votes
                 end)
 
-                reply("The top 2 entries are %f points apart.", sorted[1].votes - sorted[2].votes)
+                reply("The top 2 entries are %d rejections apart.", sorted[1].votes - sorted[2].votes)
             end
         }, {
             ["name"] = "remove_suggestion",
