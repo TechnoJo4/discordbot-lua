@@ -80,6 +80,7 @@ local data_vote
 local data_voters
 local data_choices
 local data_suggestions
+local data_history
 local data_genres
 
 local data_log = {votes={}}
@@ -381,6 +382,7 @@ return {
         data_genres = read_json("../vote/genres.json")
         data_choices = read_json("../vote/choices.json")
         data_suggestions = read_json("../vote/suggestions.json")
+        data_history = read_json("../vote/history.json")
     end,
     teardown = function()
         write_json("../vote/log/temp.json", data_log)
@@ -389,6 +391,7 @@ return {
         write_json("../vote/genres.json", data_genres)
         write_json("../vote/choices.json", data_choices)
         write_json("../vote/suggestions.json", data_suggestions)
+        write_json("../vote/history.json", data_history)
     end,
     commands = { {
         ["name"] = "choices",
@@ -455,6 +458,15 @@ return {
                         :setColor(ECOLOR)
                         :setTitle("Error")
                         :setDescription("This has already been suggested.")
+                        :send(m)
+                    return
+                end
+
+                for _,v in ipairs(data_history) do
+                    Embed()
+                        :setColor(ECOLOR)
+                        :setTitle("Error")
+                        :setDescription("This suggestion was a previous week's winner.")
                         :send(m)
                     return
                 end
@@ -823,6 +835,16 @@ return {
                 reply("Success.")
             end
         }, {
+            ["name"] = "history_add",
+            ["check"] = ADMIN_CHECK,
+            ["aliases"] = {}, ["args"] = {
+                { name = "id", type = "string" }
+            },
+            ["function"] = function()
+                data_history[#data_history+1] = id
+                reply("Success.")
+            end
+        }, {
             ["name"] = "set_link",
             ["check"] = ADMIN_CHECK,
             ["aliases"] = {}, ["args"] = {
@@ -870,6 +892,7 @@ return {
                 write_json("../vote/genres.json", data_genres)
                 write_json("../vote/choices.json", data_choices)
                 write_json("../vote/suggestions.json", data_suggestions)
+                write_json("../vote/history.json", data_history)
                 reply("Success.")
             end
         }, {
