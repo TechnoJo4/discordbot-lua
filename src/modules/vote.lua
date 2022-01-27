@@ -6,6 +6,7 @@ local ADMIN_ROLE = "800068353820852265" -- tachiyomi "842824047855403008"
 
 local SUGGESTION_PATTERN = "^https://anilist.co/manga/%d+/.-/"
 local SUGGESTION_PATTERN_NONAME = "^(https://anilist.co/manga/%d+)"
+local SUGGESTION_PATTERN_ID = "^https://anilist.co/manga/(%d+)"
 
 local AUTOMATE = true
 local INFO_CHANNEL = "456261147864203276" -- tachiyomi "842823870288363560"
@@ -451,6 +452,7 @@ return {
             end
 
             -- check for duplicates
+            local id = link:match(SUGGESTION_PATTERN_ID)
             local idlink = link:match(SUGGESTION_PATTERN_NONAME)
             for k,v in pairs(data_suggestions) do
                 if k ~= u.id and k ~= "running" and v:match(SUGGESTION_PATTERN_NONAME) == idlink then
@@ -463,12 +465,14 @@ return {
                 end
 
                 for _,v in ipairs(data_history) do
-                    Embed()
-                        :setColor(ECOLOR)
-                        :setTitle("Error")
-                        :setDescription("This suggestion was a previous week's winner.")
-                        :send(m)
-                    return
+                    if v == id then
+                        Embed()
+                            :setColor(ECOLOR)
+                            :setTitle("Error")
+                            :setDescription("This suggestion was a previous week's winner.")
+                            :send(m)
+                        return
+                    end
                 end
             end
 
