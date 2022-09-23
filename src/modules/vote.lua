@@ -10,9 +10,9 @@ local SUGGESTION_PATTERN_ID = "^https://anilist.co/manga/(%d+)"
 
 local AUTOMATE = true
 local INFO_CHANNEL = "456261147864203276" -- tachiyomi "842823870288363560"
-local TALK_CHANNEL = "842768821382414346"
 local AUTO_PING = "<@&800068353820852265>" -- tachiyomi "<@&842766939675033600>"
 local COOLDOWN_LENGTH = 4
+local WILDCARD_TIME = 10
 
 math.randomseed(os.time())
 
@@ -144,6 +144,27 @@ local function NEW_GENRE(ping)
     -- clear old suggestions
     data_suggestions = {}
 
+    -- increase week number
+    data_genres.week = data_genres.week + 1
+
+    -- wildcard week logic
+    if WILDCARD_TIME > 0 and data_genres.week % WILDCARD_TIME == 0 then
+        -- send message
+        Embed()
+            :setColor(COLOR)
+            :setTitle("Genre of the Week")
+            :setDescription("Week "..tostring(data_genres.week).." is **wildcard week**. All genres are allowed.\n"
+                    .. "You may choose any completely translated manga of up to 20 volumes.\n"
+                    .. "Suggestions are now open.", genre)
+            :send(info_channel, ping and AUTO_PING or "")
+
+        -- save new week number
+        write_json("../vote/backup/genres.json", data_genres)
+
+        -- don't do randomization
+        return
+    end
+
     -- cooldown check
     local genre
     repeat
@@ -165,7 +186,7 @@ local function NEW_GENRE(ping)
     Embed()
         :setColor(COLOR)
         :setTitle("Genre of the Week")
-        :setDescription("The chosen genre was: **%s**.\nSuggestions are now open.", genre)
+        :setDescription("The chosen genre for week "..tostring(data_genres.week).." is: **%s**.\nSuggestions are now open.", genre)
         :send(info_channel, ping and AUTO_PING or "")
 
     -- write genres.json to save cooldown
@@ -180,7 +201,6 @@ local function automation()
         local dt = os.date("!*t")
 
         info_channel = info_channel or client:getChannel(INFO_CHANNEL)
-        talk_channel = talk_channel or client:getChannel(TALK_CHANNEL)
 
         -- automate suggestions open/close, alongside with genre randomization
         local suggestions_open = (dt.wday == 5 and dt.hour >= 16) or (dt.wday == 6 and dt.hour < 16)
@@ -205,7 +225,7 @@ local function automation()
                 Embed()
                     :setColor(COLOR)
                     :setTitle("Vote of the Week")
-                    :setDescription("Voting is now open.")
+                    :setDescription("Voting for week "..tostring(data_genres.week).." is now open.")
                     :send(info_channel, AUTO_PING)
             else
                 Embed()
@@ -225,27 +245,9 @@ local function automation()
             -- actually close voting
             data_choices.running = vote_open
         end
-
-        local discussion_open = (dt.wday == 7 or dt.wday == 1)
-        if discussion_open_current == nil then
-            discussion_open_current = discussion_open
-        elseif discussion_open_current ~= discussion_open then
-            if discussion_open then
-                Embed()
-                    :setColor(COLOR)
-                    :setDescription("You may now freely discuss spoilers.")
-                    :send(talk_channel)
-            else
-                Embed()
-                    :setColor(ECOLOR)
-                    :setDescription("Discussion has ended and spoilers are now NOT allowed.")
-                    :send(talk_channel)
-            end
-            discussion_open_current = discussion_open
-        end
     end
 
-    local dt = os.date("%m-%d.%H")
+    local dt = tostring(data_genres.week)
     write_json("../vote/log/temp.json", data_log)
     write_json("../vote/backup/votes."..dt..".json", data_vote)
     write_json("../vote/backup/voters."..dt..".json", data_voters)
@@ -287,7 +289,7 @@ __More Help__
 Send `bc help admin` to know about commands available to Book Club Leaders.
 Send `bc help weighting` for the detailed mathematical information about how entries get points.
 ]]):build(),
-        temp = topic("Rejection Voting ⚠️")
+        temp = topic("Rejection Voting")
             :setDescription([[
 Rejection voting is now used.
 
@@ -599,7 +601,7 @@ return {
         }, {
             ["name"] = "automate",
             ["check"] = ADMIN_CHECK,
-            ["aliases"] = { "entries" }, ["args"] = {
+            ["aliases"] = {}, ["args"] = {
                 { name = "auto", type = "boolean" }
             },
             ["function"] = function()
@@ -609,7 +611,7 @@ return {
         }, {
             ["name"] = "new_genre",
             ["check"] = ADMIN_CHECK,
-            ["aliases"] = { "entries" }, ["args"] = {},
+            ["aliases"] = {}, ["args"] = {},
             ["function"] = function()
                 NEW_GENRE(false)
             end
@@ -745,6 +747,13 @@ return {
                 end
             end
         }, {
+            ["name"] = "automation",
+            ["check"] = ADMIN_CHECK,
+            ["aliases"] = { }, ["args"] = {},
+            ["function"] = function()
+                automation()
+            end
+        }, {
             ["name"] = "top2",
             ["check"] = ADMIN_CHECK,
             ["aliases"] = { "winner" }, ["args"] = {},
@@ -762,7 +771,7 @@ return {
         }, {
             ["name"] = "remove_suggestion",
             ["check"] = ADMIN_CHECK,
-            ["aliases"] = {}, ["args"] = {
+            ["aliases"] = { "rms" }, ["args"] = {
                 { name = "targets", type = "string+" }
             },
             ["function"] = function()
@@ -774,7 +783,7 @@ return {
         }, {
             ["name"] = "suggestions2choices",
             ["check"] = ADMIN_CHECK,
-            ["aliases"] = {}, ["args"] = {},
+            ["aliases"] = { "s2c" }, ["args"] = {},
             ["function"] = function()
                 local names, links = {}, {}
 
@@ -845,8 +854,41 @@ return {
                 { name = "id", type = "string" }
             },
             ["function"] = function()
+                for _,v in ipairs(data_history) do
+                    if v == id then
+                        reply("Already added to history.")
+                        return
+                    end
+                end
                 data_history[#data_history+1] = id
                 reply("Success.")
+            end
+        }, {
+            ["name"] = "history_dedup",
+            ["check"] = ADMIN_CHECK,
+            ["aliases"] = {}, ["args"] = {},
+            ["function"] = function()
+                local a = {}
+                local new = {}
+                for i=1,#data_history do
+                    local v = data_history[i]
+                    if not a[v] then
+                        a[v] = i
+                        new[#new+1] = v
+                    end
+                end
+                data_history = new
+                reply("Success.")
+            end
+        }, {
+            ["name"] = "set_week",
+            ["check"] = ADMIN_CHECK,
+            ["aliases"] = {}, ["args"] = {
+                { name = "weeknum", type = "int" }
+            },
+            ["function"] = function()
+                data_genres.week = weeknum
+                write_json("../vote/genres.json", data_genres)
             end
         }, {
             ["name"] = "set_link",
