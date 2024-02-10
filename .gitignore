@@ -1,6 +1,6 @@
 deps
 
-db
+data
 
 *.log
 gateway.json

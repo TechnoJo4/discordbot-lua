@@ -14,68 +14,7 @@ local AUTO_PING = "<@&800068353820852265>" -- tachiyomi "<@&842766939675033600>"
 local COOLDOWN_LENGTH = 4
 local WILDCARD_TIME = 10
 
-math.randomseed(os.time())
-
 -- END CONFIG
-
---[[ DOCUMENTATION
-
-NOTES:
-    Use the shutdown command to shutdown the bot to make sure teardown
-    happens and results are saved properly.
-
-COMMANDS:
-    Use the `help` command
-
-INITIALIZATION:
-    1. create a "backup" folder inside "vote"
-    2. if needed, follow reset instructions below
-
-HOW TO RESET:
-    votes.json and voters.json:
-        {}
-
-    suggestions.json:
-        {"running":true}
-
-    choices.json format:
-        {
-            "running": true,
-            "names": [
-                "name1",
-                "name2",
-                "..."
-            ],
-            "links": [
-                "https://anilist.co/for/name1",
-                "https://anilist.co/for/name2",
-                "..."
-            ]
-        }
-
-        (the names and links arrays must be the same length)
-
-POSSIBLE WEIGHTING ADJUSTEMENTS:
-
-    Default: (0.5 ^ (n - 1))
-    Result: 1, 0.5, 0.25, 0.125, ...
-
-    To favor choices 3+ more, (1 / n) can be used.
-    Result: 1, 0.5, 0.33333, 0.25, ...
-
-    To give more weight to the first choice and less to everything
-    afterwards, the default may be used with a lower value instead of 0.5
-
-    Example: ((1/3) ^ (n - 1))
-    Result: 1, 0.33333, 0.11111, 0.037037, ...
-
-    Similarly, you can give more weight to choices 2+ by using a higher
-    constant than 0.5 in the default formula.
-
-    Example: (0.8 ^ (n - 1))
-    Result: 1, 0.8, 0.64, 0.521, 0.4096, ...
-
---]]
 
 local data_vote
 local data_voters
@@ -159,7 +98,7 @@ local function NEW_GENRE(ping)
             :send(info_channel, ping and AUTO_PING or "")
 
         -- save new week number
-        write_json("../vote/backup/genres.json", data_genres)
+        write_json("../data/vote/backup/genres.json", data_genres)
 
         -- don't do randomization
         return
@@ -190,7 +129,7 @@ local function NEW_GENRE(ping)
         :send(info_channel, ping and AUTO_PING or "")
 
     -- write genres.json to save cooldown
-    write_json("../vote/backup/genres.json", data_genres)
+    write_json("../data/vote/backup/genres.json", data_genres)
 end
 
 -- create hourly backups (use in case of rigged voting or bad teardown)
@@ -237,9 +176,9 @@ local function automation()
                 data_log.choices = data_choices
                 data_log.suggestions = data_suggestions
                 data_log.genre_cooldown = data_genres.in_cooldown
-                write_json("../vote/log/"..os.date("!%Y-%m-%d")..".json", data_log)
+                write_json("../data/vote/log/"..os.date("!%Y-%m-%d")..".json", data_log)
                 data_log = { votes = {} }
-                write_json("../vote/log/temp.json", data_log)
+                write_json("../data/vote/log/temp.json", data_log)
             end
 
             -- actually close voting
@@ -248,10 +187,10 @@ local function automation()
     end
 
     local dt = tostring(data_genres.week)
-    write_json("../vote/log/temp.json", data_log)
-    write_json("../vote/backup/votes."..dt..".json", data_vote)
-    write_json("../vote/backup/voters."..dt..".json", data_voters)
-    write_json("../vote/backup/suggestions."..dt..".json", data_suggestions)
+    write_json("../data/vote/log/temp.json", data_log)
+    write_json("../data/vote/backup/votes."..dt..".json", data_vote)
+    write_json("../data/vote/backup/voters."..dt..".json", data_voters)
+    write_json("../data/vote/backup/suggestions."..dt..".json", data_suggestions)
 end
 clock:on("hour", automation)
 clock:start(true)
@@ -379,22 +318,22 @@ return {
         setfenv(read_json, env)
         setfenv(write_json, env)
 
-        data_log = read_json("../vote/log/temp.json")
-        data_vote = read_json("../vote/votes.json")
-        data_voters = read_json("../vote/voters.json")
-        data_genres = read_json("../vote/genres.json")
-        data_choices = read_json("../vote/choices.json")
-        data_suggestions = read_json("../vote/suggestions.json")
-        data_history = read_json("../vote/history.json")
+        data_log = read_json("../data/vote/log/temp.json")
+        data_vote = read_json("../data/vote/votes.json")
+        data_voters = read_json("../data/vote/voters.json")
+        data_genres = read_json("../data/vote/genres.json")
+        data_choices = read_json("../data/vote/choices.json")
+        data_suggestions = read_json("../data/vote/suggestions.json")
+        data_history = read_json("../data/vote/history.json")
     end,
     teardown = function()
-        write_json("../vote/log/temp.json", data_log)
-        write_json("../vote/votes.json", data_vote)
-        write_json("../vote/voters.json", data_voters)
-        write_json("../vote/genres.json", data_genres)
-        write_json("../vote/choices.json", data_choices)
-        write_json("../vote/suggestions.json", data_suggestions)
-        write_json("../vote/history.json", data_history)
+        write_json("../data/vote/log/temp.json", data_log)
+        write_json("../data/vote/votes.json", data_vote)
+        write_json("../data/vote/voters.json", data_voters)
+        write_json("../data/vote/genres.json", data_genres)
+        write_json("../data/vote/choices.json", data_choices)
+        write_json("../data/vote/suggestions.json", data_suggestions)
+        write_json("../data/vote/history.json", data_history)
     end,
     commands = { {
         ["name"] = "choices",
@@ -677,7 +616,7 @@ return {
                 local log = data_log
                 local l_choices = data_choices
                 if week then
-                    log = read_json("../vote/log/"..week..".json")
+                    log = read_json("../data/vote/log/"..week..".json")
                     l_choices = log.choices
                 end
 
@@ -821,9 +760,9 @@ return {
                 data_voters = {}
 
                 -- save
-                write_json("../vote/votes.json", data_vote)
-                write_json("../vote/voters.json", data_voters)
-                write_json("../vote/choices.json", data_choices)
+                write_json("../data/vote/votes.json", data_vote)
+                write_json("../data/vote/voters.json", data_voters)
+                write_json("../data/vote/choices.json", data_choices)
             end
         }, {
             ["name"] = "reset_votes",
@@ -888,7 +827,7 @@ return {
             },
             ["function"] = function()
                 data_genres.week = weeknum
-                write_json("../vote/genres.json", data_genres)
+                write_json("../data/vote/genres.json", data_genres)
             end
         }, {
             ["name"] = "set_link",
@@ -919,11 +858,11 @@ return {
             ["check"] = ADMIN_CHECK,
             ["aliases"] = {}, ["args"] = {},
             ["function"] = function()
-                data_vote = read_json("../vote/votes.json")
-                data_voters = read_json("../vote/voters.json")
-                data_genres = read_json("../vote/genres.json")
-                data_choices = read_json("../vote/choices.json")
-                data_suggestions = read_json("../vote/suggestions.json")
+                data_vote = read_json("../data/vote/votes.json")
+                data_voters = read_json("../data/vote/voters.json")
+                data_genres = read_json("../data/vote/genres.json")
+                data_choices = read_json("../data/vote/choices.json")
+                data_suggestions = read_json("../data/vote/suggestions.json")
                 choices_text = nil
                 reply("Success.")
             end
@@ -932,13 +871,13 @@ return {
             ["check"] = ADMIN_CHECK,
             ["aliases"] = {}, ["args"] = {},
             ["function"] = function()
-                write_json("../vote/log/temp.json", data_log)
-                write_json("../vote/votes.json", data_vote)
-                write_json("../vote/voters.json", data_voters)
-                write_json("../vote/genres.json", data_genres)
-                write_json("../vote/choices.json", data_choices)
-                write_json("../vote/suggestions.json", data_suggestions)
-                write_json("../vote/history.json", data_history)
+                write_json("../data/vote/log/temp.json", data_log)
+                write_json("../data/vote/votes.json", data_vote)
+                write_json("../data/vote/voters.json", data_voters)
+                write_json("../data/vote/genres.json", data_genres)
+                write_json("../data/vote/choices.json", data_choices)
+                write_json("../data/vote/suggestions.json", data_suggestions)
+                write_json("../data/vote/history.json", data_history)
                 reply("Success.")
             end
         }, {
@@ -982,7 +921,7 @@ return {
             ["function"] = function()
                 local f = name .. ".json"
                 reply({
-                    file = { f, fs.readFileSync("../vote/" .. f) }
+                    file = { f, fs.readFileSync("../data/vote/" .. f) }
                 })
             end
         } }

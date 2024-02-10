@@ -8,16 +8,19 @@ local printf, errorf = unpack(require("./utils"))
 
 -- deps
 local fs = require("fs")
+local json = require("json")
 local pathjoin = require("pathjoin").pathJoin
-local discordia = require('discordia')
+local discordia = require("discordia")
 
--- constants
-local PREFIX = "~"
+-- load config
+local config = assert(json.parse(assert(fs.readFileSync("../data/config.json"))))
+
+local PREFIX = assert(config.prefix)
 local LPREFIX = #PREFIX
 local CASE_INSENSITIVE = PREFIX:upper() ~= PREFIX:lower()
 
-local COLOR = 0x4321ff
-local ECOLOR = 0xFF0000
+local COLOR = tonumber("0x" .. config.color)
+local ECOLOR = tonumber("0x" .. config.error_color)
 
 -- setup
 local utils = {}
@@ -70,24 +73,11 @@ do
     end
 
     -- load modules
-    local schema = {
-        ["name"] = "string",
-        ["emoji"] = "string",
-        -- TODO: COMPLETE THIS
-    }
-
-    for fname in fs.scandirSync("modules") do
+    for _,v in pairs(config.modules) do
         ---@type module
-        local mod = mload(fname)
+        local mod = mload(v..".lua")
 
-        if mod ~= false then
-            for f, t in pairs(schema) do
-                -- TODO: ALONG WITH THIS
-                if type(mod[f]) ~= t then
-                    errorf("Invalid module %q", mod.name)
-                end
-            end
-
+        if mod then
             local function _cmd(c, m, g, at)
                 c.module = m
                 c.parent = g
@@ -105,7 +95,9 @@ do
                         a.optional = false; a.greedy = true
                     elseif t:sub(#t,#t) == "*" then
                         a.optional = true; a.greedy = true
-                    else a.optional = false; a.greedy = false end
+                    else
+                        a.optional = false; a.greedy = false
+                    end
 
                     if a.optional or a.greedy then
                         t = t:sub(1, #t-1)
@@ -182,6 +174,9 @@ local wrapall do
     end
 end
 
+-- in case any modules need randomness
+math.randomseed(os.time())
+
 -- setup signal handler to catch ctrl+c shutdown
 do
     local uv = require("uv")
@@ -247,7 +242,7 @@ do
         if err then
             return Embed()
                 :setDescription(err)
-                :setColor(0xFF0000)
+                :setColor(ECOLOR)
                 :send(m)
         end
 
@@ -255,7 +250,7 @@ do
             local v, err_msg = env(res.command.check)()
             if not v then
                 Embed()
-                    :setColor(0xFF0000)
+                    :setColor(ECOLOR)
                     :setTitle("Error")
                     :setDescription(err_msg)
                     :send(m)
@@ -267,7 +262,7 @@ do
             local v, err_msg = env(res.command.module.check)()
             if not v then
                 Embed()
-                    :setColor(0xFF0000)
+                    :setColor(ECOLOR)
                     :setTitle("Error")
                     :setDescription(err_msg)
                     :send(m)
@@ -292,5 +287,5 @@ do
         end
     end)
 
-    client:run("Bot "..os.getenv("token"))
+    client:run("Bot "..config.token)
 end
