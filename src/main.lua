@@ -75,7 +75,7 @@ do
     -- load modules
     for _,v in pairs(config.modules) do
         ---@type module
-        local mod = mload(v..".lua")
+        local mod = assert(mload(v..".lua"))
 
         if mod then
             local function _cmd(c, m, g, at)
